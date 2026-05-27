@@ -100,7 +100,7 @@ struct Client {
 	int basew, baseh, incw, inch, maxw, maxh, minw, minh, hintsvalid;
 	int bw, oldbw;
 	unsigned int tags;
-	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen, isterminal, noswallow;
+  int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen, isfakefullscreen, isterminal, noswallow;
 	pid_t pid;
 	Client *next;
 	Client *snext;
@@ -183,6 +183,8 @@ static void focus(Client *c);
 static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
+static void fullscreen(const Arg *arg);
+static void fakefullscreen(const Arg *arg);
 static Atom getatomprop(Client *c, Atom prop);
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
@@ -218,6 +220,7 @@ static void setcurrentdesktop(void);
 static void setdesktopnames(void);
 static void setfocus(Client *c);
 static void setfullscreen(Client *c, int fullscreen);
+static void setfakefullscreen(Client *c, int fakefullscreen);
 static void setlayout(const Arg *arg);
 static void setcfact(const Arg *arg);
 static void setmfact(const Arg *arg);
@@ -982,6 +985,38 @@ focusstack(const Arg *arg)
 	}
 }
 
+void
+fullscreen(const Arg *arg)
+{
+	Client *c = selmon->sel;
+	if (c) {
+		if (c->isfakefullscreen)
+			setfakefullscreen(c, 0);
+		setfullscreen(c, !c->isfullscreen);
+		if (c->isfullscreen) {
+			if (selmon->showbar)
+				togglebar(NULL);
+		} else {
+			if (!selmon->showbar)
+				togglebar(NULL);
+		}
+	}
+}
+
+void
+fakefullscreen(const Arg *arg)
+{
+	Client *c = selmon->sel;
+	if (c) {
+		if (c->isfullscreen) {
+			setfullscreen(c, 0);
+			if (!selmon->showbar)
+				togglebar(NULL);
+		}
+		setfakefullscreen(c, !c->isfakefullscreen);
+	}
+}
+
 Atom
 getatomprop(Client *c, Atom prop)
 {
@@ -1677,7 +1712,7 @@ setcurrentdesktop(void){
 }
 void setdesktopnames(void){
 	XTextProperty text;
-	Xutf8TextListToTextProperty(dpy, tags, TAGSLENGTH, XUTF8StringStyle, &text);
+  Xutf8TextListToTextProperty(dpy, (char **)tags, TAGSLENGTH, XUTF8StringStyle, &text);
 	XSetTextProperty(dpy, root, &text, netatom[NetDesktopNames]);
 }
 
@@ -1739,6 +1774,30 @@ setfullscreen(Client *c, int fullscreen)
 		XChangeProperty(dpy, c->win, netatom[NetWMState], XA_ATOM, 32,
 			PropModeReplace, (unsigned char*)0, 0);
 		c->isfullscreen = 0;
+		c->isfloating = c->oldstate;
+		c->bw = c->oldbw;
+		c->x = c->oldx;
+		c->y = c->oldy;
+		c->w = c->oldw;
+		c->h = c->oldh;
+		resizeclient(c, c->x, c->y, c->w, c->h);
+		arrange(c->mon);
+	}
+}
+
+void
+setfakefullscreen(Client *c, int fakefullscreen)
+{
+	if (fakefullscreen && !c->isfakefullscreen) {
+		c->isfakefullscreen = 1;
+		c->oldstate = c->isfloating;
+		c->oldbw = c->bw;
+		c->bw = 0;
+		c->isfloating = 1;
+		resizeclient(c, c->mon->wx, c->mon->wy, c->mon->ww, c->mon->wh);
+		XRaiseWindow(dpy, c->win);
+	} else if (!fakefullscreen && c->isfakefullscreen) {
+		c->isfakefullscreen = 0;
 		c->isfloating = c->oldstate;
 		c->bw = c->oldbw;
 		c->x = c->oldx;
@@ -2218,8 +2277,8 @@ updateclientlist(void)
 void updatecurrentdesktop(void){
 	long rawdata[] = { selmon->tagset[selmon->seltags] };
 	int i=0;
-	while(*rawdata >> i+1){
-		i++;
+  while(*rawdata >> (i+1)){
+    i++;
 	}
 	long data[] = { i };
 	XChangeProperty(dpy, root, netatom[NetCurrentDesktop], XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 1);
