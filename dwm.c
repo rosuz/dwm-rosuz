@@ -269,8 +269,7 @@ static Client *termforwin(const Client *c);
 static pid_t winpid(Window w);
 
 /* variables */
-static const char autostartblocksh[] = "autostart_blocking.sh";
-static const char autostartsh[] = "autostart.sh";
+static const char autostartsh[] = "scripts/autostart.sh";
 static const char broken[] = "broken";
 static const char dwmdir[] = "dwm";
 static const char localshare[] = ".local/share";
@@ -1627,24 +1626,20 @@ runautostart(void)
 		}
 	}
 
-	/* try the blocking script first */
-	path = ecalloc(1, strlen(pathpfx) + strlen(autostartblocksh) + 2);
-	if (sprintf(path, "%s/%s", pathpfx, autostartblocksh) <= 0) {
-		free(path);
-		free(pathpfx);
-	}
-
-	if (access(path, X_OK) == 0)
-		system(path);
-
-	/* now the non-blocking script */
+	path = ecalloc(1, strlen(pathpfx) + strlen(autostartsh) + 2);
 	if (sprintf(path, "%s/%s", pathpfx, autostartsh) <= 0) {
 		free(path);
 		free(pathpfx);
+		return;
 	}
-
-	if (access(path, X_OK) == 0)
-		system(strcat(path, " &"));
+	if (access(path, X_OK) == 0) {
+		pid_t pid = fork();
+		if (pid == 0) {
+			setsid();
+			execl(path, path, (char *)NULL);
+			_exit(127);
+		}
+	}
 
 	free(pathpfx);
 	free(path);
