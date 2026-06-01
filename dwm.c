@@ -1789,9 +1789,8 @@ setfakefullscreen(Client *c, int fakefullscreen)
 		c->isfakefullscreen = 1;
 		c->oldstate = c->isfloating;
 		c->oldbw = c->bw;
-		c->bw = 0;
 		c->isfloating = 1;
-		resizeclient(c, c->mon->wx, c->mon->wy, c->mon->ww, c->mon->wh);
+    resizeclient(c, c->mon->wx, c->mon->wy, c->mon->ww - 2 * c->bw, c->mon->wh - 2 * c->bw);
 		XRaiseWindow(dpy, c->win);
 	} else if (!fakefullscreen && c->isfakefullscreen) {
 		c->isfakefullscreen = 0;
