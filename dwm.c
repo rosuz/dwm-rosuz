@@ -1238,13 +1238,18 @@ manage(Window w, XWindowAttributes *wa)
 	grabbuttons(c, 0);
 	if (!c->isfloating)
 		c->isfloating = c->oldstate = trans != None || c->isfixed;
-	if (c->isfloating)
+	if (c->isfloating || !c->mon->lt[c->mon->sellt]->arrange) {
+		c->w = c->mon->ww * 6 / 10;
+		c->h = c->mon->wh * 7 / 10;
+		c->x = c->mon->wx + (c->mon->ww - c->w) / 2;
+		c->y = c->mon->wy + (c->mon->wh - c->h) / 2;
 		XRaiseWindow(dpy, c->win);
+	}
 	attach(c);
 	attachstack(c);
 	XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
 		(unsigned char *) &(c->win), 1);
-	XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
+	XMoveResizeWindow(dpy, c->win, c->isfloating ? c->x : c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
 	setclientstate(c, NormalState);
 	if (c->mon == selmon)
 		unfocus(selmon->sel, 0);
@@ -1814,12 +1819,24 @@ setfakefullscreen(Client *c, int fakefullscreen)
 void
 setlayout(const Arg *arg)
 {
-	if (!arg || !arg->v || arg->v != selmon->lt[selmon->sellt])
+	if (!arg || !arg->v || arg->v != selmon->lt[selmon->sellt]) {
 		selmon->sellt = selmon->pertag->sellts[selmon->pertag->curtag] = (selmon->pertag->sellts[selmon->pertag->curtag] + 1) % LENGTH(layouts);
+	}
 	if (arg && arg->v)
 		selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt] = (Layout *)arg->v;
 	selmon->lt[selmon->sellt] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt];
 	strncpy(selmon->ltsymbol, selmon->lt[selmon->sellt]->symbol, sizeof selmon->ltsymbol);
+	if (selmon->lt[selmon->sellt]->arrange == NULL) {
+		Client *c;
+		for (c = selmon->clients; c; c = c->next)
+			if (ISVISIBLE(c)) {
+				c->w = c->mon->ww * 6 / 10;
+				c->h = c->mon->wh * 7 / 10;
+				c->x = c->mon->wx + (c->mon->ww - c->w) / 2;
+				c->y = c->mon->wy + (c->mon->wh - c->h) / 2;
+				resizeclient(c, c->x, c->y, c->w, c->h);
+			}
+	}
 	if (selmon->sel)
 		arrange(selmon);
 	else
@@ -2080,9 +2097,13 @@ togglefloating(const Arg *arg)
 	if (selmon->sel->isfullscreen) /* no support for fullscreen windows */
 		return;
 	selmon->sel->isfloating = !selmon->sel->isfloating || selmon->sel->isfixed;
-	if (selmon->sel->isfloating)
-		resize(selmon->sel, selmon->sel->x, selmon->sel->y,
-			selmon->sel->w, selmon->sel->h, 0);
+	if (selmon->sel->isfloating) {
+		int nw = selmon->sel->mon->ww * 6 / 10;
+		int nh = selmon->sel->mon->wh * 7 / 10;
+		int nx = selmon->sel->mon->wx + (selmon->sel->mon->ww - nw) / 2;
+		int ny = selmon->sel->mon->wy + (selmon->sel->mon->wh - nh) / 2;
+		resize(selmon->sel, nx, ny, nw, nh, 0);
+	}
 	arrange(selmon);
 }
 
