@@ -1,0 +1,2 @@
+#!/bin/bash
+xdg-terminal-exec --app-id=org.dwm.terminal -- "$@"
