@@ -1,0 +1,39 @@
+#!/bin/bash
+set -euo pipefail
+
+DWM_PATH="$(cd "$(dirname "$0")/.." && pwd)"
+THEME_DIR="$DWM_PATH/themes"
+CURRENT_DIR="$THEME_DIR/current"
+
+# Recompile and install dwm
+make -C "$DWM_PATH"
+sudo make -C "$DWM_PATH" install
+
+# Set wallpaper
+"$DWM_PATH/scripts/dwm-theme-bg-next"
+
+# Install btop theme
+if [[ -f "$CURRENT_DIR/btop.theme" ]]; then
+  mkdir -p "$HOME/.config/btop/themes"
+  ln -sf "$CURRENT_DIR/btop.theme" "$HOME/.config/btop/themes/current.theme"
+fi
+
+# Install dunst config
+if [[ -f "$CURRENT_DIR/dunstrc" ]]; then
+  mkdir -p "$HOME/.config/dunst"
+  ln -sf "$CURRENT_DIR/dunstrc" "$HOME/.config/dunst/dunstrc"
+fi
+
+# Restart Polybar
+if command -v polybar &>/dev/null; then
+  "$DWM_PATH/scripts/dwm-polybar-restart"
+fi
+
+# Restart notification daemon
+if command -v dunst &>/dev/null; then
+  pkill dunst 2>/dev/null || true
+  sleep 0.3
+  dunst &>/dev/null &
+fi
+
+notify-send "Theme applied" 2>/dev/null || true

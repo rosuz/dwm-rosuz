@@ -1,0 +1,49 @@
+#!/bin/bash
+# Cycle to next wallpaper in the current theme's background directory.
+# Updates themes/current/background symlink and re-blurs the lock screen image.
+
+set -euo pipefail
+
+DWM_PATH="$(cd "$(dirname "$0")/.." && pwd)"
+CURRENT="$DWM_PATH/themes/current"
+
+# Resolve actual theme directory (not a symlink)
+ACTUAL_DIR=$(readlink -f "$CURRENT")
+ACTUAL_BG="$ACTUAL_DIR/backgrounds"
+
+[[ -d "$ACTUAL_BG" ]] || { echo "No backgrounds in $ACTUAL_BG"; exit 1; }
+
+BG_SYMLINK="$CURRENT/background"
+INDEX_FILE="$HOME/.local/state/dwm/bg-index"
+mkdir -p "$(dirname "$INDEX_FILE")"
+
+mapfile -t files < <(find "$ACTUAL_BG" -maxdepth 1 -type f | sort)
+count=${#files[@]}
+if [[ ${#files[@]} -eq 0 ]]; then
+	rm -f "$BG_SYMLINK" "$CURRENT/lock-blur.png"
+	exit 1
+fi
+
+# Cycle index
+index=$(cat "$INDEX_FILE" 2>/dev/null || echo -1)
+if (( index < 0 || index >= count )); then
+	index=-1
+fi
+next_index=$(( (index + 1) % count ))
+echo "$next_index" > "$INDEX_FILE"
+
+selected="${files[$next_index]}"
+
+# Update symlink
+ln -sfn "$selected" "$BG_SYMLINK"
+
+# Set wallpaper (X only)
+if command -v feh &>/dev/null && [[ -n "${DISPLAY:-}" ]]; then
+	feh --bg-scale "$selected"
+fi
+
+# Re-blur lock background to exact screen size (X only)
+if command -v magick &>/dev/null && [[ -n "${DISPLAY:-}" ]]; then
+	read -r W H <<< "$(xrandr --current | grep '*' | head -1 | awk '{print $1}' | tr 'x' ' ')"
+	magick "$selected" -resize "${W}x${H}^" -gravity center -extent "${W}x${H}" -blur 0x8 "$CURRENT/lock-blur.png"
+fi

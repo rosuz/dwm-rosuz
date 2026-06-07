@@ -1,0 +1,30 @@
+#!/bin/bash
+set -euo pipefail
+
+DWM_PATH="$(cd "$(dirname "$0")/.." && pwd)"
+THEME_DIR="$DWM_PATH/themes"
+
+if [[ -z "${1:-}" ]]; then
+  ls -d "$THEME_DIR"/*/ | xargs -n1 basename | grep -v -E '^(current|templates|templates-user|next)$'
+  exit 0
+fi
+
+THEME_NAME="$1"
+THEME_PATH="$THEME_DIR/$THEME_NAME"
+
+if [[ ! -d "$THEME_PATH" ]]; then
+  echo "Theme '$THEME_NAME' not found"
+  exit 1
+fi
+
+# Copy theme to current
+rm -rf "$THEME_DIR/current"
+cp -r "$THEME_PATH" "$THEME_DIR/current"
+
+# Generate config files
+"$DWM_PATH/scripts/dwm-generate-theme"
+
+# Apply theme
+"$DWM_PATH/scripts/dwm-theme-apply"
+
+echo "Theme switched to $THEME_NAME"

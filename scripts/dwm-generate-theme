@@ -1,0 +1,83 @@
+#!/bin/bash
+set -euo pipefail
+
+DWM_PATH="$(cd "$(dirname "$0")/.." && pwd)"
+THEME_DIR="$DWM_PATH/themes"
+TEMPLATES_DIR="$DWM_PATH/templates"
+CURRENT_DIR="$THEME_DIR/current"
+COLORS_FILE="$CURRENT_DIR/colors.toml"
+
+mkdir -p "$CURRENT_DIR"
+[[ -f "$COLORS_FILE" ]] || { echo "Error: $COLORS_FILE not found"; exit 1; }
+[[ -d "$TEMPLATES_DIR" ]] || { echo "Error: $TEMPLATES_DIR not found"; exit 1; }
+
+templates=("$TEMPLATES_DIR"/*.tpl)
+(( ${#templates[@]} > 0 )) || { echo "Error: no templates in $TEMPLATES_DIR"; exit 1; }
+
+hex_to_rgb() {
+  local hex="${1#\#}"
+  printf "%d,%d,%d" "0x${hex:0:2}" "0x${hex:2:2}" "0x${hex:4:2}"
+}
+
+sed_script=$(mktemp)
+
+# Default semantic colors (Catppuccin Mocha inspired)
+default_surface0="#313244"
+default_surface1="#45475a"
+default_surface2="#585b70"
+default_overlay0="#6c7086"
+default_overlay1="#7f849c"
+
+# Read colors.toml for semantic fallbacks
+while IFS='=' read -r key value; do
+  key="${key//[\"\' ]/}"
+  [[ $key && $key != \#* && $key != \[* ]] || continue
+  value="${value#*[\"\']}"
+  value="${value%%[\"\']*}"
+  case "$key" in
+    surface0) [[ -n "$value" ]] && default_surface0="$value" ;;
+    surface1) [[ -n "$value" ]] && default_surface1="$value" ;;
+    surface2) [[ -n "$value" ]] && default_surface2="$value" ;;
+    overlay0) [[ -n "$value" ]] && default_overlay0="$value" ;;
+    overlay1) [[ -n "$value" ]] && default_overlay1="$value" ;;
+  esac
+done <"$COLORS_FILE"
+
+# Write semantic fallbacks first
+{
+  printf 's|{{ surface0 }}|%s|g\n' "$default_surface0"
+  printf 's|{{ surface1 }}|%s|g\n' "$default_surface1"
+  printf 's|{{ surface2 }}|%s|g\n' "$default_surface2"
+  printf 's|{{ overlay0 }}|%s|g\n' "$default_overlay0"
+  printf 's|{{ overlay1 }}|%s|g\n' "$default_overlay1"
+} >"$sed_script"
+
+# Write theme color substitutions
+while IFS='=' read -r key value; do
+  key="${key//[\"\' ]/}"
+  [[ $key && $key != \#* && $key != \[* ]] || continue
+  value="${value#*[\"\']}"
+  value="${value%%[\"\']*}"
+  [[ "$key" =~ ^(surface0|surface1|surface2|overlay0|overlay1)$ ]] && continue
+  printf 's|{{ %s }}|%s|g\n' "$key" "$value"
+  printf 's|{{ %s_strip }}|%s|g\n' "$key" "${value#\#}"
+  if [[ $value =~ ^# ]]; then
+    rgb=$(hex_to_rgb "$value")
+    printf 's|{{ %s_rgb }}|%s|g\n' "$key" "$rgb"
+  fi
+done <"$COLORS_FILE" >>"$sed_script"
+
+shopt -s nullglob
+
+for tpl in "${templates[@]}"; do
+  filename=$(basename "$tpl" .tpl)
+  sed -f "$sed_script" "$tpl" >"$CURRENT_DIR/$filename"
+done
+
+rm "$sed_script"
+
+if [[ -f "$CURRENT_DIR/lock-screen" ]]; then
+	chmod +x "$CURRENT_DIR/lock-screen"
+fi
+
+echo "Theme generated: $CURRENT_DIR"
