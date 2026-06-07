@@ -1,0 +1,42 @@
+[global]
+    monitor = 0
+    follow = mouse
+    origin = top-right
+    width = 420
+    offset = 20x20
+    padding = 10
+    horizontal_padding = 15
+    frame_width = 2
+    separator_height = 2
+    font = sans-serif 14
+    line_height = 0
+    markup = full
+    format = "<b>%s</b>\n%b"
+    alignment = left
+    vertical_alignment = center
+    show_age_threshold = 60
+    ellipsize = middle
+    ignore_newline = false
+    stack_duplicates = true
+    hide_duplicates_count = false
+    show_indicators = true
+    idle_threshold = 120
+    icon_position = left
+    min_icon_size = 32
+    max_icon_size = 32
+    icon_path = /usr/share/icons/Adwaita/16x16/status/:/usr/share/icons/Adwaita/32x32/status/
+    sticky_history = yes
+    history_length = 20
+    dmenu = /usr/bin/rofi -dmenu
+    timeout = 5
+
+[appname=Spotify]
+    skip_display = yes
+
+[urgency_critical]
+    timeout = 0
+    fullscreen = push
+
+[summary_regex=".*(Screenshot|copied).*"]
+    max_icon_size = 80
+    format = "<b>%s</b>\n%b"
