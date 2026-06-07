@@ -1,0 +1,124 @@
+@theme "../../.local/share/dwm/themes/current/rofi.rasi"
+
+/* ================= Main window ================= */
+window {
+    location: center;
+
+    background-color: transparent;
+
+    border: 2px;
+    border-color: @accent-color;
+}
+
+/* ================= Layout ================= */
+mainbox {
+    orientation: horizontal;
+    children: [ "listbox" ];
+}
+
+/* -- List Box: contains input + list -- */
+listbox {
+    orientation: vertical;
+    padding: 10px;
+    spacing: 10px;
+
+    background-color: @bg0;
+
+    border-color: @accent-color;
+
+    children: [ "inputbar", "listview" ];
+}
+
+/* ================= Search Bar ================= */
+inputbar {
+    padding: 10px 12px;
+    spacing: 10px;
+
+    background-color: @bg1;
+
+    border: 2px;
+    border-color: @accent-color;
+
+    children: [ prompt, entry ];
+}
+
+prompt {
+    text-color: @accent-color;
+}
+
+entry {
+    text-color: @fg0;
+}
+
+/* ================= List View (table body) ================= */
+listview {
+    columns: 1;
+    fixed-height: false;
+    lines: 12;
+
+    padding: 0px;
+    spacing: 0px;
+
+    background-color: @bg1;
+
+    border: 2px;
+    border-color: @accent-color;
+
+    scrollbar: false;
+}
+
+/* ================= Rows ================= */
+/* We output: KEY<TAB>ACTION and use -display-columns 1,2 in your script.
+   This makes it *feel* like a 2-column table. */
+element {
+    padding: 9px 12px;
+    spacing: 18px;
+
+    background-color: transparent;
+    text-color: @fg0;
+
+    /* table row separator */
+    border: 0px 0px 1px 0px;
+    border-color: @bg0;
+}
+
+element normal {
+    background-color: transparent;
+}
+
+element selected {
+    background-color: @bg0;
+    text-color: @accent-color;
+
+    /* keep the separator subtle while selected */
+    border: 0px 0px 1px 0px;
+    border-color: @bg0;
+}
+
+/* Optional: alternate-row shading for more "table" readability */
+element alternate {
+    background-color: transparent;
+}
+
+/* ================= Text ================= */
+element-text {
+    text-color: inherit;
+    background-color: transparent;
+}
+
+/* Make matching text pop without looking loud */
+element-text highlight {
+    text-color: @accent-color;
+}
+
+/* ================= Message (if any) ================= */
+message {
+    background-color: @bg1;
+    padding: 10px 12px;
+    border: 2px;
+    border-color: @accent-color;
+}
+
+textbox {
+    text-color: @fg0;
+}

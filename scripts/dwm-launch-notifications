@@ -1,0 +1,12 @@
+#!/bin/bash
+STATE_FILE="$HOME/.local/state/dwm/indicators/notification-silencing"
+mkdir -p "$(dirname "$STATE_FILE")"
+if [[ -f "$STATE_FILE" ]] && grep -q "active" "$STATE_FILE" 2>/dev/null; then
+  dunstctl set-paused false
+  echo "inactive" > "$STATE_FILE"
+  notify-send "DND" "Notifications enabled"
+else
+  dunstctl set-paused true
+  echo "active" > "$STATE_FILE"
+  notify-send "DND" "Notifications silenced"
+fi

@@ -1,0 +1,2 @@
+#!/bin/bash
+alacritty -e bash -c "sudo pacman -Syu; echo ''; read -p 'Press enter to close.'"

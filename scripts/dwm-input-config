@@ -1,0 +1,35 @@
+#!/bin/bash
+
+echo "=== Input Configuration ==="
+echo ""
+
+read -rp "Keyboard layout [us]: " kbd_layout
+kbd_layout="${kbd_layout:-us}"
+read -rp "Variant (leave empty for none) [altgr-intl]: " kbd_variant
+
+read -rp "Tap-to-click? [Y/n]: " ans
+touchpad_tap=0
+[[ ! "$ans" =~ ^[nN] ]] && touchpad_tap=1
+
+read -rp "Natural scrolling? [Y/n]: " ans
+touchpad_natural=0
+[[ ! "$ans" =~ ^[nN] ]] && touchpad_natural=1
+
+read -rp "Disable while typing? [Y/n]: " ans
+touchpad_dwt=0
+[[ ! "$ans" =~ ^[nN] ]] && touchpad_dwt=1
+
+SAVE_DIR="$HOME/.config/dwm"
+SAVE_FILE="$SAVE_DIR/input-config"
+mkdir -p "$SAVE_DIR"
+
+cat > "$SAVE_FILE" <<EOF
+kbd_layout="$kbd_layout"
+kbd_variant="$kbd_variant"
+touchpad_tap=$touchpad_tap
+touchpad_natural=$touchpad_natural
+touchpad_dwt=$touchpad_dwt
+EOF
+
+echo ""
+echo "Saved to $SAVE_FILE (applied at next X start)."

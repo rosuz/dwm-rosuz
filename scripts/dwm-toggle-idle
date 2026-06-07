@@ -1,0 +1,35 @@
+#!/bin/bash
+# Toggle the xautolock idle daemon on/off
+#
+# Kills xautolock (via PID file or pgrep fallback) and writes "disabled"
+# to the state file, or starts xautolock and writes "enabled".
+#
+# The Polybar idle module reads the state file via indicators/idle.sh
+# to show the lock icon.
+
+set -euo pipefail
+
+DWM_PATH="$(cd "$(dirname "$0")/.." && pwd)"
+LOCKER="$DWM_PATH/scripts/dwm-lock-screen"
+PIDFILE="/tmp/xautolock.pid"
+STATE_DIR="$HOME/.local/state/dwm/indicators"
+STATE_FILE="$STATE_DIR/idle"
+
+mkdir -p "$STATE_DIR"
+
+if [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+	kill "$(cat "$PIDFILE")" 2>/dev/null || true
+	rm -f "$PIDFILE"
+	echo "disabled" > "$STATE_FILE"
+	notify-send "Idle" "Auto-lock disabled"
+elif pgrep -x xautolock >/dev/null 2>&1; then
+	pkill -x xautolock 2>/dev/null || true
+	rm -f "$PIDFILE"
+	echo "disabled" > "$STATE_FILE"
+	notify-send "Idle" "Auto-lock disabled"
+else
+	xautolock -time 5 -locker "$LOCKER" -detectsleep &
+	echo $! > "$PIDFILE"
+	echo "enabled" > "$STATE_FILE"
+	notify-send "Idle" "Auto-lock enabled (5 min)"
+fi

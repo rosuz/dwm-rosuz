@@ -1,0 +1,7 @@
+#!/bin/bash
+BATTERY=$(upower -e | grep BAT | head -1)
+if [[ -z "$BATTERY" ]]; then
+  notify-send "Battery" "No battery found"
+  exit 0
+fi
+upower -i "$BATTERY" | notify-send "Battery" "$(cat)"

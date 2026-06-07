@@ -69,7 +69,7 @@ enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
 enum { SchemeNorm, SchemeSel }; /* color schemes */
 enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
        NetWMFullscreen, NetActiveWindow, NetWMWindowType,
-       NetWMWindowTypeDialog, NetClientList, NetDesktopNames, NetDesktopViewport, NetNumberOfDesktops, NetCurrentDesktop, NetLast }; /* EWMH atoms */
+       NetWMWindowTypeDialog, NetLayout, NetOccupied, NetClientList, NetDesktopNames, NetDesktopViewport, NetNumberOfDesktops, NetCurrentDesktop, NetLast }; /* EWMH atoms */
 enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
@@ -244,6 +244,8 @@ static void unmanage(Client *c, int destroyed);
 static void unmanagealtbar(Window w);
 static void unmapnotify(XEvent *e);
 static void updatecurrentdesktop(void);
+static void updatelayout(void);
+static void updateoccupiedtags(void);
 static void updatebarpos(Monitor *m);
 static void updatebars(void);
 static void updateclientlist(void);
@@ -450,6 +452,10 @@ arrangemon(Monitor *m)
 	strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof m->ltsymbol);
 	if (m->lt[m->sellt]->arrange)
 		m->lt[m->sellt]->arrange(m);
+	if (m == selmon) {
+		updatelayout();
+		updateoccupiedtags();
+	}
 }
 
 void
@@ -963,6 +969,9 @@ focusmon(const Arg *arg)
 	unfocus(selmon->sel, 0);
 	selmon = m;
 	focus(NULL);
+	updatelayout();
+	updateoccupiedtags();
+	updatecurrentdesktop();
 }
 
 void
@@ -1826,6 +1835,7 @@ setlayout(const Arg *arg)
 		selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt] = (Layout *)arg->v;
 	selmon->lt[selmon->sellt] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt];
 	strncpy(selmon->ltsymbol, selmon->lt[selmon->sellt]->symbol, sizeof selmon->ltsymbol);
+	updatelayout();
 	if (selmon->lt[selmon->sellt]->arrange == NULL) {
 		Client *c;
 		for (c = selmon->clients; c; c = c->next)
@@ -1922,6 +1932,8 @@ setup(void)
 	netatom[NetNumberOfDesktops] = XInternAtom(dpy, "_NET_NUMBER_OF_DESKTOPS", False);
 	netatom[NetCurrentDesktop] = XInternAtom(dpy, "_NET_CURRENT_DESKTOP", False);
 	netatom[NetDesktopNames] = XInternAtom(dpy, "_NET_DESKTOP_NAMES", False);
+	netatom[NetLayout] = XInternAtom(dpy, "_DWM_LAYOUT", False);
+	netatom[NetOccupied] = XInternAtom(dpy, "_DWM_OCCUPIED_TAGS", False);
 	/* init cursors */
 	cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
 	cursor[CurResize] = drw_cur_create(drw, XC_sizing);
@@ -2002,8 +2014,6 @@ spawn(const Arg *arg)
 {
 	struct sigaction sa;
 
-	if (arg->v == dmenucmd)
-		dmenumon[0] = '0' + selmon->num;
 	if (fork() == 0) {
 		if (dpy)
 			close(ConnectionNumber(dpy));
@@ -2330,6 +2340,24 @@ void updatecurrentdesktop(void){
 	}
 	long data[] = { i };
 	XChangeProperty(dpy, root, netatom[NetCurrentDesktop], XA_CARDINAL, 32, PropModeReplace, (unsigned char *)data, 1);
+}
+
+void
+updatelayout(void) {
+	XChangeProperty(dpy, root, netatom[NetLayout], XA_STRING, 8,
+		PropModeReplace, (unsigned char *)selmon->ltsymbol,
+		strlen(selmon->ltsymbol));
+}
+
+void
+updateoccupiedtags(void) {
+	unsigned int occ = 0;
+	Client *c;
+	for (c = selmon->clients; c; c = c->next)
+		occ |= c->tags;
+	long data[] = { (long)(occ & TAGMASK) };
+	XChangeProperty(dpy, root, netatom[NetOccupied], XA_CARDINAL, 32,
+		PropModeReplace, (unsigned char *)data, 1);
 }
 
 int

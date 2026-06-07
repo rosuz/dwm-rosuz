@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# Fallback to nvim if $EDITOR is not set
+cmd-present "$EDITOR" || EDITOR=nvim
+
+case "$EDITOR" in
+nvim | vim | nano | micro | hx | helix | fresh)
+  # Terminal-based editors: run in a terminal window
+  exec dwm-launch-tui "$EDITOR" "$@"
+  ;;
+*)
+  # GUI editors: launch directly
+  exec setsid "$EDITOR" "$@"
+  ;;
+esac

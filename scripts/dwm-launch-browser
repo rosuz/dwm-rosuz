@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Launch the default browser with private window support.
+# Uses xdg-settings to find the default browser, extracts the
+# actual Exec command from its .desktop file, and detects the
+# correct private/incognito flag automatically.
+
+set -euo pipefail
+
+default_browser=$(xdg-settings get default-web-browser)
+
+# Find .desktop file in standard XDG paths + flatpak location
+for dir in ~/.local ~/.nix-profile /usr; do
+  f="$dir/share/applications/$default_browser"
+  [ -f "$f" ] && desktop="$f" && break
+done
+
+# Flatpak exports live under /var/lib/flatpak/exports/share
+[ -z "$desktop" ] && [ -f "/var/lib/flatpak/exports/share/applications/$default_browser" ] \
+  && desktop="/var/lib/flatpak/exports/share/applications/$default_browser"
+
+[ -z "$desktop" ] && exit 1
+
+# Extract Exec line from .desktop file, strip env/@@/%-markup
+exec_line=$(sed -n '/^Exec=/{ s/^Exec=//; p; q }' "$desktop")
+cmd=$(echo "$exec_line" | sed 's/^env [^ ]* //; s/%[UufF]//g; s/@@[^@]*@@//g')
+
+# Detect the correct private flag from the actual binary
+if $cmd --help 2>/dev/null | grep -q MOZ_LOG; then
+  flag="--private-window"
+elif echo "$cmd" | grep -qi 'edge'; then
+  flag="--inprivate"
+elif echo "$cmd" | grep -qi 'torbrowser'; then
+  flag=""
+else
+  flag="--incognito"
+fi
+
+# --private is a universal alias substituted to the correct flag
+exec $cmd ${@/--private/$flag}

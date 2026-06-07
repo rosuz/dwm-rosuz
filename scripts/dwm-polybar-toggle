@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Toggle Polybar on/off
+FLAG_FILE="$HOME/.local/state/dwm/polybar-off"
+
+if [[ -f $FLAG_FILE ]]; then
+  rm -f "$FLAG_FILE"
+  for m in $(polybar --list-monitors 2>/dev/null | cut -d: -f1); do
+    MONITOR=$m polybar main &
+  done
+else
+  touch "$FLAG_FILE"
+  killall -q polybar
+fi

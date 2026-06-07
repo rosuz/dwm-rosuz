@@ -1,0 +1,3 @@
+#!/bin/bash
+rfkill unblock wifi
+exec dwm-launch-or-focus-tui impala

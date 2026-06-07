@@ -1,0 +1,2 @@
+#!/bin/bash
+exec dwm-launch-or-focus-tui wiremix

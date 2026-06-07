@@ -1,0 +1,4 @@
+#!/bin/bash
+
+APP_ID="org.dwm.$(basename "$1")"
+exec setsid xdg-terminal-exec --app-id="$APP_ID" -e "$@"

@@ -1,0 +1,3 @@
+#!/bin/bash
+rfkill unblock bluetooth
+exec dwm-launch-or-focus-tui bluetui

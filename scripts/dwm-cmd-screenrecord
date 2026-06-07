@@ -1,0 +1,37 @@
+#!/bin/bash
+
+MODE="${1:-toggle}"
+DIR="$HOME/Videos/Screenrecords"
+mkdir -p "$DIR"
+PIDFILE="/tmp/screenrecord.pid"
+
+case "$MODE" in
+  start)
+    if [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+      notify-send "Screenrecord" "Already recording (PID $(cat "$PIDFILE"))"
+      exit 0
+    fi
+    FILE="$DIR/$(date +%Y-%m-%d_%H-%M-%S).mp4"
+    # Get screen geometry
+    geoinfo=$(xrandr --current | grep primary | awk '{print $4}')
+    if [[ -z "$geoinfo" ]]; then
+      geoinfo=$(xrandr --current | grep '*' | head -1 | awk '{print $1}')
+    fi
+    ffmpeg -f x11grab -video_size "$geoinfo" -i "$DISPLAY" -f pulse -i default "$FILE" &
+    echo $! > "$PIDFILE"
+    notify-send "Screenrecord" "Recording started → $FILE"
+    ;;
+  stop)
+    if [[ ! -f "$PIDFILE" ]]; then
+      notify-send "Screenrecord" "Not recording"
+      exit 0
+    fi
+    kill "$(cat "$PIDFILE")" 2>/dev/null || true
+    rm -f "$PIDFILE"
+    notify-send "Screenrecord" "Recording stopped"
+    ;;
+  *)
+    echo "Usage: dwm-cmd-screenrecord [start|stop]"
+    exit 1
+    ;;
+esac

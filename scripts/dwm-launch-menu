@@ -1,0 +1,251 @@
+#!/bin/bash
+set -euo pipefail
+
+not_impl() {
+  notify-send "$1" "need implementation" -u low || true
+}
+
+menu() {
+  local prompt="$1"
+  local options="$2"
+  choice=$(echo -e "$options" | rofi -dmenu -p "$prompt" \
+    -no-fixed-num-lines -theme minimal)
+  if [[ -z "$choice" ]]; then
+    return 1
+  fi
+  echo "$choice"
+}
+
+declare -a MENU_STACK=()
+current_menu=""
+
+push_menu() {
+  if [[ ${#MENU_STACK[@]} -eq 0 ]]; then
+    MENU_STACK+=("$1")
+  elif [[ "${MENU_STACK[-1]}" != "$1" ]]; then
+    MENU_STACK+=("$1")
+  fi
+}
+
+pop_menu() {
+  if [[ ${#MENU_STACK[@]} -gt 1 ]]; then
+    unset 'MENU_STACK[-1]'
+  fi
+}
+
+back_menu() {
+  if [[ ${#MENU_STACK[@]} -eq 1 ]] && [[ "${MENU_STACK[-1]}" == "$current_menu" ]]; then
+    exit 0
+  fi
+  pop_menu
+  local prev="${MENU_STACK[-1]}"
+  $prev
+}
+
+show_main_menu() {
+  current_menu="show_main_menu"
+  push_menu "show_main_menu"
+  choice=$(menu "Go" "󰀻  Apps\n󰧑  Learn\n󰔎  Trigger\n󰐕  Style\n󰘗  Setup\n󰅇  Clipboard\n󰉉  Install\n󰭌  Remove\n  Update\n󰋙  About\n󰐥  System")
+  case "$choice" in
+  *Apps*) rofi -show drun -theme minimal -theme-str 'listview { lines: 8; }' ;;
+  *Learn*) show_learn_menu ;;
+  *Trigger*) show_trigger_menu ;;
+  *Style*) show_style_menu ;;
+  *Setup*) show_setup_menu ;;
+  *Clipboard*) show_clipboard_menu ;;
+  *Install*) show_install_menu ;;
+  *Remove*) show_remove_menu ;;
+  *Update*) show_update_menu ;;
+  *About*) show_about ;;
+  *System*) show_system_menu ;;
+  *) exit 0 ;;
+  esac
+}
+
+show_learn_menu() {
+  current_menu="show_learn_menu"
+  push_menu "show_learn_menu"
+  case $(menu "Learn" "  Keybindings\n󰣇  Arch\n󱆃  Neovim\n󰑲  Bash") in
+  *Keybindings*) not_impl "Keybindings" ;;
+  *Arch*) xdg-open https://wiki.archlinux.org/ && exit 0 ;;
+  *Neovim*) xdg-open https://www.lazyvim.org/keymaps && exit 0 ;;
+  *Bash*) xdg-open https://devhints.io/bash && exit 0 ;;
+  *) back_menu ;;
+  esac
+}
+
+show_trigger_menu() {
+  current_menu="show_trigger_menu"
+  push_menu "show_trigger_menu"
+  case $(menu "Trigger" "  Capture\n󰔎  Share\n󰐕  Toggle") in
+  *Capture*) show_capture_menu ;;
+  *Share*) show_share_menu ;;
+  *Toggle*) show_toggle_menu ;;
+  *) back_menu ;;
+  esac
+}
+
+show_capture_menu() {
+  current_menu="show_capture_menu"
+  push_menu "show_capture_menu"
+  case $(menu "Capture" "  Screenshot\n󰹑  Screenrecord\n󰑽  Color") in
+  *Screenshot*) show_screenshot_menu ;;
+  *Screenrecord*) show_screenrecord_menu ;;
+  *Color*) gpick 2>/dev/null || not_impl "Color picker" && exit 0 ;;
+  *) back_menu ;;
+  esac
+}
+
+show_screenshot_menu() {
+  current_menu="show_screenshot_menu"
+  push_menu "show_screenshot_menu"
+  case $(menu "Screenshot" "󰘌  Copy\n󰈙  Save\n󰘌  Save + Copy") in
+  *Save\ +\ Copy*) dwm-cmd-screenshot selection both && exit 0 ;;
+  *Copy*) dwm-cmd-screenshot selection clipboard && exit 0 ;;
+  *Save*) dwm-cmd-screenshot selection save && exit 0 ;;
+  *) back_menu ;;
+  esac
+}
+
+show_screenrecord_menu() {
+  current_menu="show_screenrecord_menu"
+  push_menu "show_screenrecord_menu"
+  case $(menu "Screenrecord" "󰾊  Full screen\n󰙧  Stop") in
+  *Full\ screen*) dwm-cmd-screenrecord full && exit 0 ;;
+  *Stop*) dwm-cmd-screenrecord stop && exit 0 ;;
+  *)
+    back_menu
+    return
+    ;;
+  esac
+}
+
+show_share_menu() {
+  current_menu="show_share_menu"
+  push_menu "show_share_menu"
+  case $(menu "Share" "󰏬  Clipboard\n󰈔  File\n󰉋  Folder") in
+  *Clipboard*) dwm-cmd-share clipboard ;;
+  *File*) dwm-launch-tui dwm-cmd-share file ;;
+  *Folder*) dwm-launch-tui dwm-cmd-share folder ;;
+  *) back_menu ;;
+  esac
+}
+
+show_toggle_menu() {
+  current_menu="show_toggle_menu"
+  push_menu "show_toggle_menu"
+  case $(menu "Toggle" "󰟬  Nightlight\n󱫖  Idle Lock") in
+  *Nightlight*) not_impl "Nightlight" ;;
+  *Idle*) dwm-toggle-idle ;;
+  *) back_menu ;;
+  esac
+}
+
+show_style_menu() {
+  current_menu="show_style_menu"
+  push_menu "show_style_menu"
+  case $(menu "Style" "󰸌  Theme\n󰀻  Background") in
+  *Theme*) show_theme_menu ;;
+  *Background*) dwm-theme-bg-next && exit 0 ;;
+  *) back_menu ;;
+  esac
+}
+
+show_theme_menu() {
+  current_menu="show_theme_menu"
+  selected=$(dwm-theme-switch | rofi -dmenu -p "Theme" -i)
+  push_menu "show_theme_menu"
+  if [[ -n "$selected" ]]; then
+    dwm-launch-tui dwm-theme-switch "$selected"
+    exit 0
+  else
+    back_menu
+  fi
+}
+
+show_setup_menu() {
+  current_menu="show_setup_menu"
+  push_menu "show_setup_menu"
+  case $(menu "Setup" "󰜌  Audio\n󰤨  Wifi\n󰂯  Bluetooth\n󰍹  Monitors\n󰍾  Input") in
+  *Audio*) dwm-launch-audio && exit 0 ;;
+  *Wifi*) dwm-launch-wifi && exit 0 ;;
+  *Bluetooth*) dwm-launch-bluetooth && exit 0 ;;
+  *Monitors*) not_impl "Monitors" ;;
+  *Input*) not_impl "Input" ;;
+  *) back_menu ;;
+  esac
+}
+
+show_install_menu() {
+  current_menu="show_install_menu"
+  push_menu "show_install_menu"
+  case $(menu "Install" "󰣇  Package\n󰣇  AUR\n󰸌  Theme\n󰀻  Background") in
+  *Package*) not_impl "Install package" ;;
+  *AUR*) not_impl "Install AUR package" ;;
+  *Theme*) not_impl "Install theme" ;;
+  *Background*) not_impl "Install background" ;;
+  *) back_menu ;;
+  esac
+}
+
+show_remove_menu() {
+  current_menu="show_remove_menu"
+  push_menu "show_remove_menu"
+  case $(menu "Remove" "󰣇  Package\n󰸌  Theme") in
+  *Package*) not_impl "Remove package" ;;
+  *Theme*) not_impl "Remove theme" ;;
+  *) back_menu ;;
+  esac
+}
+
+show_update_menu() {
+  current_menu="show_update_menu"
+  push_menu "show_update_menu"
+  case $(menu "Update" "󰐕  Config\n󰤎  Process\n󰀡  All") in
+  *Config*) not_impl "Refresh config" ;;
+  *Process*) not_impl "Restart process" ;;
+  *All*) not_impl "Update all" ;;
+  *) back_menu ;;
+  esac
+}
+
+show_about() {
+  current_menu="show_about"
+  push_menu "show_about"
+  not_impl "About"
+  back_menu
+}
+
+show_system_menu() {
+  current_menu="show_system_menu"
+  push_menu "show_system_menu"
+  case $(menu "System" "󰌾  Lock\n󰒲  Suspend\n󰍃  Logout\n󰜉  Restart\n󰐥  Shutdown") in
+  *Lock*) dwm-lock-screen && exit 0 ;;
+  *Suspend*) systemctl suspend && exit 0 ;;
+  *Logout*) pkill dwm && exit 0 ;;
+  *Restart*) systemctl reboot && exit 0 ;;
+  *Shutdown*) systemctl poweroff && exit 0 ;;
+  *) back_menu ;;
+  esac
+}
+
+show_clipboard_menu() {
+  current_menu="show_clipboard_menu"
+  push_menu "show_clipboard_menu"
+  rofi -modi "clipboard:greenclip print" -show clipboard -run-command '{cmd}'
+  back_menu
+}
+
+case "${1:-}" in
+drun) rofi -show drun -theme minimal -theme-str 'listview { lines: 8; }' ;;
+system) show_system_menu ;;
+capture) show_capture_menu ;;
+screenshot) show_screenshot_menu ;;
+toggle) show_toggle_menu ;;
+style) show_style_menu ;;
+setup) show_setup_menu ;;
+share) show_share_menu ;;
+background) dwm-theme-bg-next && exit 0 ;;
+theme) show_style_menu ;;
+*) show_main_menu ;;
+esac

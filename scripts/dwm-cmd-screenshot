@@ -1,0 +1,28 @@
+#!/bin/bash
+
+MODE="${1:-region}"
+DIR="$HOME/Pictures/Screenshots"
+mkdir -p "$DIR"
+FILE="$DIR/$(date +%Y-%m-%d_%H-%M-%S).png"
+
+case "$MODE" in
+  full)
+    maim "$FILE"
+    xclip -selection clipboard -t image/png -i "$FILE"
+    notify-send "Screenshot" "Fullscreen saved to $FILE"
+    ;;
+  region)
+    maim -s "$FILE"
+    xclip -selection clipboard -t image/png -i "$FILE"
+    notify-send "Screenshot" "Region saved to $FILE"
+    ;;
+  window)
+    maim -i "$(xdotool getactivewindow)" "$FILE"
+    xclip -selection clipboard -t image/png -i "$FILE"
+    notify-send "Screenshot" "Window saved to $FILE"
+    ;;
+  *)
+    echo "Usage: dwm-cmd-screenshot [full|region|window]"
+    exit 1
+    ;;
+esac

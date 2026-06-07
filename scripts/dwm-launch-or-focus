@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Launch or focus on a given command identified by the passed in window-pattern.
+
+if (($# == 0)); then
+  echo "Usage: dwm-launch-or-focus [window-pattern] [launch-command]"
+  exit 1
+fi
+
+WINDOW_PATTERN="$1"
+LAUNCH_COMMAND="${2:-"$WINDOW_PATTERN"}"
+shift
+
+# Try to find and focus existing window by class or name (X11)
+if command -v wmctrl &>/dev/null; then
+  wmctrl -xa "$WINDOW_PATTERN" 2>/dev/null && exit 0
+  wmctrl -a "$WINDOW_PATTERN" 2>/dev/null && exit 0
+fi
+
+# Fallback: launch new instance
+eval exec setsid $LAUNCH_COMMAND

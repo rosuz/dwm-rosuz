@@ -1,0 +1,34 @@
+#!/bin/bash
+
+MODE="$1"
+
+for cmd in fzf localsend xclip; do
+  if ! command -v "$cmd" &>/dev/null; then
+    echo "Error: $cmd is not installed"
+    exit 1
+  fi
+done
+
+case "$MODE" in
+clipboard)
+  TEMP=$(mktemp --suffix=.txt)
+  xclip -selection clipboard -o >"$TEMP"
+  localsend --headless send "$TEMP"
+  rm -f "$TEMP"
+  ;;
+file)
+  files=$(find "$HOME" -type f 2>/dev/null | fzf --multi)
+  [[ -z "$files" ]] && exit 0
+  readarray -t FILE_ARRAY <<<"$files"
+  localsend --headless send "${FILE_ARRAY[@]}"
+  ;;
+folder)
+  folder=$(find "$HOME" -maxdepth 5 -type d 2>/dev/null | fzf)
+  [[ -z "$folder" ]] && exit 0
+  localsend --headless send "$folder"
+  ;;
+*)
+  echo "Usage: dwm-cmd-share <clipboard|file|folder>"
+  exit 1
+  ;;
+esac

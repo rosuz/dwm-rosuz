@@ -1,0 +1,5 @@
+#!/bin/bash
+
+APP_ID="org.dwm.$(basename "$1")"
+LAUNCH_COMMAND="dwm-launch-tui $@"
+exec dwm-launch-or-focus "$APP_ID" "$LAUNCH_COMMAND"

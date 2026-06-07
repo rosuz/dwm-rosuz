@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+
+DWM_PATH="$(cd "$(dirname "$0")/.." && pwd)"
+
+pkill -SIGUSR1 dunst 2>/dev/null || true
+setxkbmap -layout us
+
+"$DWM_PATH/themes/current/lock-screen"
+
+pkill -SIGUSR2 dunst 2>/dev/null || true

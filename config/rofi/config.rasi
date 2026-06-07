@@ -1,0 +1,11 @@
+configuration {
+    modi: "drun,run";
+    show-icons: true;
+    drun-display-format: "{name}";
+    display-drun: " ";
+    display-run: " ";
+    kb-element-next: "";
+    kb-mode-next: "Tab";
+}
+
+@theme "minimal.rasi"
