@@ -1,0 +1,9 @@
+#!/bin/bash
+[[ -z "$DISPLAY" ]] && exit 0
+
+BATTERY=$(upower -e | grep -i battery | head -n1)
+[[ -z "$BATTERY" ]] && exit 0
+PCT=$(upower -i "$BATTERY" | awk -F: '/percentage/ { gsub(/[%[:space:]]/, "", $2); printf "%d", $2+0.5 }')
+if   [[ "$PCT" -lt 10 ]]; then notify-send -u critical "Battery critical: ${PCT}%"
+elif [[ "$PCT" -lt 20 ]]; then notify-send -u normal "Battery low: ${PCT}%"
+fi
