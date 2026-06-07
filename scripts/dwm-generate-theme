@@ -71,6 +71,7 @@ shopt -s nullglob
 
 for tpl in "${templates[@]}"; do
   filename=$(basename "$tpl" .tpl)
+  [[ -f "$CURRENT_DIR/$filename" ]] && continue
   sed -f "$sed_script" "$tpl" >"$CURRENT_DIR/$filename"
 done
 
