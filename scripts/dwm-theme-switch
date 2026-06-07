@@ -21,6 +21,9 @@ fi
 rm -rf "$THEME_DIR/current"
 cp -r "$THEME_PATH" "$THEME_DIR/current"
 
+mkdir -p "$HOME/.local/state/dwm"
+echo "$THEME_NAME" > "$HOME/.local/state/dwm/current-theme"
+
 # Generate config files
 "$DWM_PATH/scripts/dwm-generate-theme"
 
