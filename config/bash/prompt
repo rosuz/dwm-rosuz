@@ -1,0 +1,13 @@
+alias hug="systemctl --user restart hugo"
+alias lanm="systemctl --user restart lan-mouse"
+
+# Check if the shell is interactive
+if [[ $- == *i* ]]; then
+    # Bind Ctrl+f to insert 'zi' followed by a newline
+    bind '"\C-f":"zi\n"'
+fi
+
+export PATH=$PATH:"$HOME/.local/bin:$HOME/.cargo/bin:/var/lib/flatpak/exports/bin:/.local/share/flatpak/exports/bin"
+
+eval "$(starship init bash)"
+eval "$(zoxide init bash)"
