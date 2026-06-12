@@ -3,7 +3,7 @@
     follow = mouse
     origin = top-right
     width = 420
-    offset = 20x20
+    offset = (20, 20)
     padding = 10
     horizontal_padding = 15
     frame_width = 2
@@ -35,7 +35,7 @@
 
 [urgency_critical]
     timeout = 0
-    fullscreen = push
+    fullscreen = pushback
 
 [summary_regex=".*(Screenshot|copied).*"]
     max_icon_size = 80

@@ -1,5 +1,3 @@
-@include "dunstrc-base"
-
 [urgency_low]
     background = "{{ background }}"
     foreground = "{{ foreground }}"
