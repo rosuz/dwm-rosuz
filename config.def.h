@@ -28,19 +28,21 @@ static const Rule rules[] = {
 	 *	WM_CLASS(STRING) = instance, class
 	 *	WM_NAME(STRING) = title
 	 */
-	/* class     instance  title           tags mask  isfloating  isterminal  noswallow  monitor */
-	{ "Gimp",    NULL,     NULL,           0,         1,          0,           0,        -1 },
-	{ "Firefox", NULL,     NULL,           1 << 8,    0,          0,          -1,        -1 },
-	{ "org.dwm.",NULL,     NULL,           0,         0,          1,           0,        -1 },
-	{ NULL,      NULL,     "Event Tester", 0,         0,          0,           1,        -1 }, /* xev */
+	/* class              instance  title           tags mask  isfloating  isterminal  noswallow  monitor */
+	{ "Gimp",             NULL,     NULL,           0,         1,          0,           0,        -1 },
+	{ "Firefox",          NULL,     NULL,           0,         0,          0,          -1,        -1 },
+	{ "Localsend",        NULL,     NULL,           0,         0,          0,          -1,        -1 },
+	{ "org.dwm.terminal", NULL,     NULL,           0,         0,          1,           0,        -1 },
+	{ "org.dwm.",         NULL,     NULL,           0,         1,          1,           0,        -1 },
+	{ NULL,               NULL,     "Event Tester", 0,         0,          0,           1,        -1 }, /* xev */
 };
 
 /* layout(s) */
-static const float mfact     = 0.55; /* factor of master area size [0.05..0.95] */
-static const int nmaster     = 1;    /* number of clients in master area */
-static const int resizehints = 1;    /* 1 means respect size hints in tiled resizals */
-static const int lockfullscreen = 1; /* 1 will force focus on the fullscreen window */
-static const int refreshrate = 120;  /* refresh rate (per second) for client move/resize */
+static const float mfact          = 0.55; /* factor of master area size [0.05..0.95] */
+static const int nmaster          = 1;    /* number of clients in master area */
+static const int resizehints      = 1;    /* 1 means respect size hints in tiled resizals */
+static const int lockfullscreen   = 1;    /* 1 will force focus on the fullscreen window */
+static const int refreshrate      = 120;  /* refresh rate (per second) for client move/resize */
 
 #include "fibonacci.c"
 static const Layout layouts[] = {
@@ -65,7 +67,7 @@ static const Layout layouts[] = {
 
 /* commands */
 static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
-static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_normbg, "-nf", col_normfg, "-sb", col_selbg, "-sf", col_selfg, NULL };
+static const char *dmenucmd[]     = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_normbg, "-nf", col_normfg, "-sb", col_selbg, "-sf", col_selfg, NULL };
 static const char *scrshotcmd[]   = { "dwm-cmd-screenshot", "region", NULL };
 static const char *scrreccmd[]    = { "dwm-cmd-screenrecord", "toggle", NULL };
 static const char *rofi_druncmd[] = { "dwm-launch-menu", "drun", NULL };
