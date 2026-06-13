@@ -30,10 +30,11 @@ static const Rule rules[] = {
 	 */
 	/* class              instance  title           tags mask  isfloating  isterminal  noswallow  monitor */
 	{ "Gimp",             NULL,     NULL,           0,         1,          0,           0,        -1 },
-	{ "Firefox",          NULL,     NULL,           0,         0,          0,          -1,        -1 },
-	{ "Localsend",        NULL,     NULL,           0,         0,          0,          -1,        -1 },
-	{ "org.dwm.terminal", NULL,     NULL,           0,         0,          1,           0,        -1 },
+	{ "steam",            NULL,     NULL,           1 << 8,    1,          0,          -1,        -1 },
+	{ "Localse",          NULL,     NULL,           0,         1,          0,          -1,        -1 },
 	{ "org.dwm.",         NULL,     NULL,           0,         1,          1,           0,        -1 },
+	{ "org.dwm.browser",  NULL,     NULL,           1 << 1,    0,          0,          -1,        -1 },
+	{ "org.dwm.terminal", NULL,     NULL,           0,         0,          1,           0,        -1 },
 	{ NULL,               NULL,     "Event Tester", 0,         0,          0,           1,        -1 }, /* xev */
 };
 

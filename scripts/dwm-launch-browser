@@ -1,40 +1,122 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Launch the default browser with private window support.
-# Uses xdg-settings to find the default browser, extracts the
-# actual Exec command from its .desktop file, and detects the
-# correct private/incognito flag automatically.
+#
+# Features:
+# - Uses xdg-settings to determine the default browser
+# - Supports user/system/Nix/Flatpak desktop files
+# - Extracts the Exec= command from the browser's .desktop file
+# - Maps a universal --private flag to the browser's native flag
+# - Sets WM_CLASS=org.dwm.browser when supported
+
+# Usage:
+#   dwm-launch-browser
+#   dwm-launch-browser --private
+#   dwm-launch-browser https://example.com
+#   dwm-launch-browser --private https://example.com
 
 set -euo pipefail
 
-default_browser=$(xdg-settings get default-web-browser)
+desktop=""
 
-# Find .desktop file in standard XDG paths + flatpak location
-for dir in ~/.local ~/.nix-profile /usr; do
-  f="$dir/share/applications/$default_browser"
-  [ -f "$f" ] && desktop="$f" && break
+default_browser="$(xdg-settings get default-web-browser)"
+
+[[ -n "$default_browser" ]] || {
+    echo "Unable to determine default browser." >&2
+    exit 1
+}
+
+search_paths=(
+    "$HOME/.local/share/applications"
+    "$HOME/.local/share/flatpak/exports/share/applications"
+    "$HOME/.nix-profile/share/applications"
+    "/var/lib/flatpak/exports/share/applications"
+    "/usr/share/applications"
+)
+
+for dir in "${search_paths[@]}"; do
+    candidate="$dir/$default_browser"
+
+    if [[ -f "$candidate" ]]; then
+        desktop="$candidate"
+        break
+    fi
 done
 
-# Flatpak exports live under /var/lib/flatpak/exports/share
-[ -z "$desktop" ] && [ -f "/var/lib/flatpak/exports/share/applications/$default_browser" ] \
-  && desktop="/var/lib/flatpak/exports/share/applications/$default_browser"
+[[ -n "$desktop" ]] || {
+    echo "Could not find desktop file: $default_browser" >&2
+    exit 1
+}
 
-[ -z "$desktop" ] && exit 1
+exec_line="$(sed -n 's/^Exec=//p' "$desktop" | head -n1)"
 
-# Extract Exec line from .desktop file, strip env/@@/%-markup
-exec_line=$(sed -n '/^Exec=/{ s/^Exec=//; p; q }' "$desktop")
-cmd=$(echo "$exec_line" | sed 's/^env [^ ]* //; s/%[UufF]//g; s/@@[^@]*@@//g')
+[[ -n "$exec_line" ]] || {
+    echo "No Exec entry found in $desktop" >&2
+    exit 1
+}
 
-# Detect the correct private flag from the actual binary
-if $cmd --help 2>/dev/null | grep -q MOZ_LOG; then
-  flag="--private-window"
-elif echo "$cmd" | grep -qi 'edge'; then
-  flag="--inprivate"
-elif echo "$cmd" | grep -qi 'torbrowser'; then
-  flag=""
+# Remove desktop-entry placeholders:
+# %u %U %f %F %i %c %k ...
+exec_line="$(sed -E 's/%[a-zA-Z]//g' <<< "$exec_line")"
+
+# Parse Exec line respecting quotes.
+# shellcheck disable=SC2294
+eval "cmd=( $exec_line )"
+
+[[ ${#cmd[@]} -gt 0 ]] || {
+    echo "Failed to parse Exec command." >&2
+    exit 1
+}
+
+# Remove env wrapper(s)
+while [[ "${cmd[0]}" == "env" ]]; do
+    cmd=("${cmd[@]:1}")
+
+    while [[ ${#cmd[@]} -gt 0 && "${cmd[0]}" == *=* ]]; do
+        cmd=("${cmd[@]:1}")
+    done
+done
+
+[[ ${#cmd[@]} -gt 0 ]] || {
+    echo "Invalid Exec command." >&2
+    exit 1
+}
+
+binary="${cmd[0]}"
+binary_name="$(basename "$binary")"
+
+private_flag=""
+class_flag=()
+
+# Firefox-family detection
+if "$binary" --help 2>/dev/null | grep -q 'MOZ_LOG'; then
+    private_flag="--private-window"
+    class_flag=(--class org.dwm.browser)
+
+# Microsoft Edge
+elif [[ "${binary_name,,}" =~ edge ]]; then
+    private_flag="--inprivate"
+    class_flag=(--class=org.dwm.browser)
+
+# Tor Browser
+elif [[ "${binary_name,,}" =~ torbrowser|tor-browser ]]; then
+    private_flag=""
+    class_flag=()
+
+# Chromium-family fallback
 else
-  flag="--incognito"
+    private_flag="--incognito"
+    class_flag=(--class=org.dwm.browser)
 fi
 
-# --private is a universal alias substituted to the correct flag
-exec $cmd ${@/--private/$flag}
+args=()
+
+for arg in "$@"; do
+    if [[ "$arg" == "--private" ]]; then
+        [[ -n "$private_flag" ]] && args+=("$private_flag")
+    else
+        args+=("$arg")
+    fi
+done
+
+exec "${cmd[@]}" "${class_flag[@]}" "${args[@]}"

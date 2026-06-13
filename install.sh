@@ -89,6 +89,14 @@ if [[ -f "$DWM_PATH/applications/Alacritty.desktop" ]]; then
     echo "Alacritty desktop entry installed."
 fi
 
+# Install browser desktop entry
+if [[ -f "$DWM_PATH/applications/org.dwm.browser.desktop" ]]; then
+    cp "$DWM_PATH/applications/org.dwm.browser.desktop" "$REAL_HOME/.local/share/applications/"
+    echo "Browser desktop entry installed."
+fi
+
+update-desktop-database "$REAL_HOME/.local/share/applications" 2>/dev/null || true
+
 # Install xdg-terminal-exec config
 if [[ -f "$DWM_PATH/config/xdg-terminals.list" ]]; then
     cp "$DWM_PATH/config/xdg-terminals.list" "$REAL_HOME/.config/xdg-terminals.list"

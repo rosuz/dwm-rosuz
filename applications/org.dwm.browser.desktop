@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Browser
+Exec=dwm-launch-browser %u
+Icon=web-browser
+Categories=Network;WebBrowser;
