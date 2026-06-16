@@ -1,35 +1,77 @@
-#!/bin/bash
-# Toggle the xautolock idle daemon on/off
-#
-# Kills xautolock (via PID file or pgrep fallback) and writes "disabled"
-# to the state file, or starts xautolock and writes "enabled".
-#
-# The Polybar idle module reads the state file via indicators/idle.sh
-# to show the lock icon.
-
+#!/usr/bin/env bash
 set -euo pipefail
 
 DWM_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 LOCKER="$DWM_PATH/scripts/dwm-lock-screen"
-PIDFILE="/tmp/xautolock.pid"
+
+LOCK_FILE="/tmp/dwm-xautolock.lock"
 STATE_DIR="$HOME/.local/state/dwm/indicators"
 STATE_FILE="$STATE_DIR/idle"
 
+IDLE_MINUTES=5
+quiet="false"
+for arg in "$@"; do
+  if [[ "$arg" == "--quiet" ]]; then
+    quiet="true"
+  fi
+done
+
 mkdir -p "$STATE_DIR"
 
-if [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
-	kill "$(cat "$PIDFILE")" 2>/dev/null || true
-	rm -f "$PIDFILE"
-	echo "disabled" > "$STATE_FILE"
-	notify-send "Idle" "Auto-lock disabled"
-elif pgrep -x xautolock >/dev/null 2>&1; then
-	pkill -x xautolock 2>/dev/null || true
-	rm -f "$PIDFILE"
-	echo "disabled" > "$STATE_FILE"
-	notify-send "Idle" "Auto-lock disabled"
-else
-	xautolock -time 5 -locker "$LOCKER" -detectsleep &
-	echo $! > "$PIDFILE"
-	echo "enabled" > "$STATE_FILE"
-	notify-send "Idle" "Auto-lock enabled (5 min)"
-fi
+exec 9>"$LOCK_FILE"
+flock -n 9 || exit 0
+
+is_running() {
+  pgrep -x xautolock >/dev/null
+}
+
+enable_idle() {
+  if is_running; then
+    echo "enabled" > "$STATE_FILE"
+    return
+  fi
+
+  local timeout=$((IDLE_MINUTES * 60))
+
+  xset s "$timeout" "$timeout"
+  xset +dpms
+  xset s blank
+
+  xautolock \
+    -time "$IDLE_MINUTES" \
+    -locker "$LOCKER" \
+    -detectsleep 9>&- &
+
+  sleep 0.3
+  is_running && echo "enabled" > "$STATE_FILE" || echo "disabled" > "$STATE_FILE"
+  if [[ "$quiet" != "true" ]]; then
+    notify-send "Idle" "Auto-lock enabled (${IDLE_MINUTES} min)"
+  fi
+}
+
+disable_idle() {
+  pkill -x xautolock 2>/dev/null || true
+
+  xset s off
+  xset -dpms
+  xset s noblank
+
+  echo "disabled" > "$STATE_FILE"
+  notify-send "Idle" "Auto-lock disabled"
+}
+
+case "${1:-toggle}" in
+  --enable)
+    enable_idle
+    ;;
+  --disable)
+    disable_idle
+    ;;
+  *)
+    if is_running; then
+      disable_idle
+    else
+      enable_idle
+    fi
+    ;;
+esac

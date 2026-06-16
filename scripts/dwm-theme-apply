@@ -6,7 +6,7 @@ THEME_DIR="$DWM_PATH/themes"
 CURRENT_DIR="$THEME_DIR/current"
 
 # Recompile and install dwm
-make -C "$DWM_PATH"
+make -C "$DWM_PATH" clean
 sudo make -C "$DWM_PATH" install
 
 # Set wallpaper

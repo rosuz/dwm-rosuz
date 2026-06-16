@@ -1,2 +1,2 @@
 #!/bin/bash
-alacritty -e bash -c "sudo pacman -Syu; echo ''; read -p 'Press enter to close.'"
+exec dwm-launch-or-focus-tui dwm-system-update

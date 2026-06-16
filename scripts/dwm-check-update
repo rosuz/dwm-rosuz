@@ -1,0 +1,26 @@
+#!/bin/bash
+set -euo pipefail
+
+STATE_DIR="$HOME/.local/state/dwm/indicators"
+mkdir -p "$STATE_DIR"
+
+check() {
+  count=0
+  if command -v yay >/dev/null 2>&1; then
+    count=$(yay -Qu 2>/dev/null | wc -l || true)
+  elif command -v paru >/dev/null 2>&1; then
+    count=$(paru -Qu 2>/dev/null | wc -l || true)
+  elif command -v checkupdates >/dev/null 2>&1; then
+    count=$(checkupdates 2>/dev/null | wc -l || true)
+  fi
+  command -v flatpak >/dev/null 2>&1 && count=$((count + $(flatpak remote-ls --updates 2>/dev/null | wc -l || true)))
+  echo "$count" > "$STATE_DIR/update-count"
+}
+
+if [[ "${1:-}" == "oneshot" ]]; then
+  check
+  exit 0
+fi
+
+check
+while true; do sleep 3600; check; done

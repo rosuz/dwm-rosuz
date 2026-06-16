@@ -134,9 +134,10 @@ show_share_menu() {
 show_toggle_menu() {
   current_menu="show_toggle_menu"
   push_menu "show_toggle_menu"
-  case $(menu "Toggle" "󰟬  Nightlight\n󱫖  Idle Lock") in
+  case $(menu "Toggle" "󰟬  Nightlight\n󱫖  Idle Lock\n󰂛  DND") in
   *Nightlight*) not_impl "Nightlight" ;;
   *Idle*) dwm-toggle-idle ;;
+  *DND*) dwm-toggle-notifications ;;
   *) back_menu ;;
   esac
 }
@@ -201,9 +202,10 @@ show_remove_menu() {
 show_update_menu() {
   current_menu="show_update_menu"
   push_menu "show_update_menu"
-  case $(menu "Update" "󰐕  Config\n󰤎  Process\n󰀡  All") in
+  case $(menu "Update" "󰐕  Config\n󰤎  Process\n󰌄  System\n󰀡  All") in
   *Config*) not_impl "Refresh config" ;;
   *Process*) not_impl "Restart process" ;;
+  *System*) dwm-launch-update && exit 0 ;;
   *All*) not_impl "Update all" ;;
   *) back_menu ;;
   esac

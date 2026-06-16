@@ -1,0 +1,31 @@
+#!/bin/bash
+set -euo pipefail
+
+LOG_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/dwm/system-update.log"
+mkdir -p "$(dirname "$LOG_FILE")"
+
+echo "==== $(date) Starting system update ====" | tee -a "$LOG_FILE"
+
+sudo pacman -Syu --noconfirm |& tee -a "$LOG_FILE"
+
+if command -v yay >/dev/null 2>&1; then
+  echo "=== AUR ===" |& tee -a "$LOG_FILE"
+  yay -Sua --noconfirm |& tee -a "$LOG_FILE" || true
+elif command -v paru >/dev/null 2>&1; then
+  echo "=== AUR ===" |& tee -a "$LOG_FILE"
+  paru -Sua --noconfirm |& tee -a "$LOG_FILE" || true
+fi
+
+if command -v flatpak >/dev/null 2>&1; then
+  echo "=== Flatpak ===" |& tee -a "$LOG_FILE"
+  flatpak update -y |& tee -a "$LOG_FILE" || true
+fi
+
+~/.local/share/dwm/scripts/dwm-check-update oneshot
+
+echo "" | tee -a "$LOG_FILE"
+
+echo "Update complete. Press Enter to close."
+read -r
+
+notify-send "System Update" "Update completed successfully"

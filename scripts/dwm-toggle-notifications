@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dbus_env=$(cat /proc/$(pgrep -x dunst)/environ 2>/dev/null | tr '\0' '\n' | grep '^DBUS_SESSION_BUS_ADDRESS=' | head -1)
+if [[ -n "$dbus_env" ]]; then
+  export "$dbus_env"
+fi
+
+STATE_DIR="$HOME/.local/state/dwm/indicators"
+
+state="$(cat "$STATE_DIR/dnd" 2>/dev/null || echo "enabled")"
+if [[ "$state" == "disabled" ]]; then
+  dunstctl close-all
+  dunstctl set-paused false
+  sleep 0.5
+  notify-send "DND" "Notifications enabled"
+  echo "enabled" > "$STATE_DIR/dnd"
+else
+  notify-send -t 2000 "DND" "Notifications silenced"
+  sleep 1
+  dunstctl set-paused true
+  echo "disabled" > "$STATE_DIR/dnd"
+fi

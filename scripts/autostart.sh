@@ -2,6 +2,9 @@
 
 DWM_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 
+# Reset indicator state on startup (fresh state per boot)
+rm -rf "$HOME/.local/state/dwm/indicators"
+
 # Restore keyboard and touchpad settings
 if [ -f "$HOME/.config/dwm/dwm-input-config" ]; then
   . "$HOME/.config/dwm/dwm-input-config"
@@ -11,9 +14,9 @@ if [ -f "$HOME/.config/dwm/dwm-input-config" ]; then
     xinput list-props "$dev" 2>/dev/null | grep -q "libinput Tapping Enabled" && echo "$dev" && break
   done)
   if [ -n "$TPAD" ]; then
-    [ "$touchpad_tap" = 1 ]     && xinput set-prop "$TPAD" "libinput Tapping Enabled" 1
-    [ "$touchpad_natural" = 1 ] && xinput set-prop "$TPAD" "libinput Natural Scrolling Enabled" 1
-    [ "$touchpad_dwt" = 1 ]     && xinput set-prop "$TPAD" "libinput Disable While Typing Enabled" 1
+    xinput set-prop "$TPAD" "libinput Tapping Enabled" "$touchpad_tap"
+    xinput set-prop "$TPAD" "libinput Natural Scrolling Enabled" "$touchpad_natural"
+    xinput set-prop "$TPAD" "libinput Disable While Typing Enabled" "$touchpad_dwt"
   fi
 fi
 
@@ -45,18 +48,22 @@ if command -v greenclip >/dev/null 2>&1; then
 fi
 
 # Start idle daemon
-if command -v xautolock >/dev/null 2>&1 && command -v "$DWM_PATH/scripts/dwm-lock-screen" >/dev/null 2>&1; then
-  xautolock -time 5 -locker "$DWM_PATH/scripts/dwm-lock-screen" -detectsleep &
-  PIDFILE=/tmp/xautolock.pid
-  echo $! > "$PIDFILE"
-  mkdir -p "$HOME/.local/state/dwm/indicators"
-  echo "enabled" > "$HOME/.local/state/dwm/indicators/idle"
+if command -v xautolock >/dev/null 2>&1; then
+  "$DWM_PATH/scripts/dwm-toggle-idle" --enable --quiet
+fi
+
+# Start update check daemon
+if command -v checkupdates >/dev/null 2>&1 || command -v yay >/dev/null 2>&1 || command -v flatpak >/dev/null 2>&1; then
+  "$DWM_PATH/scripts/dwm-check-update" &
 fi
 
 # Ensure dwm scripts are in PATH for bar click handlers
 export PATH="$PATH:$DWM_PATH/scripts:$DWM_PATH/scripts/polybar"
 
 # Launch Polybar per monitor
-for m in $(polybar --list-monitors 2>/dev/null | cut -d: -f1); do
-	MONITOR=$m polybar main &
+mapfile -t MONITORS < <(polybar --list-monitors 2>/dev/null | cut -d: -f1)
+(( ${#MONITORS[@]} > 0 )) || exit 0
+for m in "${MONITORS[@]}"; do
+  [[ -n "$m" ]] || continue
+  MONITOR="$m" polybar main >/dev/null 2>&1 &
 done
