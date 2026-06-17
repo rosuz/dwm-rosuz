@@ -1,5 +1,4 @@
 #!/bin/bash
-set -euo pipefail
 
 not_impl() {
   notify-send "$1" "need implementation" -u low || true
@@ -99,20 +98,23 @@ show_capture_menu() {
 show_screenshot_menu() {
   current_menu="show_screenshot_menu"
   push_menu "show_screenshot_menu"
-  case $(menu "Screenshot" "󰘌  Copy\n󰈙  Save\n󰘌  Save + Copy") in
-  *Save\ +\ Copy*) dwm-cmd-screenshot selection both && exit 0 ;;
-  *Copy*) dwm-cmd-screenshot selection clipboard && exit 0 ;;
-  *Save*) dwm-cmd-screenshot selection save && exit 0 ;;
-  *) back_menu ;;
+  case $(menu "Screenshot" "󰾊  Pick region (save+copy)\n󰹑  Full screen (save+copy)\n󰘌  Copy only\n󰈙  Save only") in
+  *Full\ screen*) dwm-cmd-screenshot fullscreen slurp && exit 0 ;;
+  *Copy*) dwm-cmd-screenshot smart copy && exit 0 ;;
+  *Save*) dwm-cmd-screenshot smart save && exit 0 ;;
+  *) dwm-cmd-screenshot smart slurp && exit 0 ;;
   esac
 }
 
 show_screenrecord_menu() {
   current_menu="show_screenrecord_menu"
   push_menu "show_screenrecord_menu"
-  case $(menu "Screenrecord" "󰾊  Full screen\n󰙧  Stop") in
-  *Full\ screen*) dwm-cmd-screenrecord full && exit 0 ;;
-  *Stop*) dwm-cmd-screenrecord stop && exit 0 ;;
+  case $(menu "Screenrecord" "󰾊  Record (pick region)\n󰹑  Record + Audio\n󰑽  Record + Webcam\n󰹑  Record + Audio + Webcam\n󰙧  Stop") in
+  *Audio\ +\ Webcam*) dwm-cmd-screenrecord --with-desktop-audio --with-microphone-audio --with-webcam && exit 0 ;;
+  *Audio*) dwm-cmd-screenrecord --with-desktop-audio --with-microphone-audio && exit 0 ;;
+  *Webcam*) dwm-cmd-screenrecord --with-webcam && exit 0 ;;
+  *Record*) dwm-cmd-screenrecord && exit 0 ;;
+  *Stop*) dwm-cmd-screenrecord --stop-recording && exit 0 ;;
   *)
     back_menu
     return

@@ -1,37 +1,306 @@
 #!/bin/bash
 
-MODE="${1:-toggle}"
-DIR="$HOME/Videos/Screenrecords"
-mkdir -p "$DIR"
+RECORDING_FILE="/tmp/screenrecording-filename"
 PIDFILE="/tmp/screenrecord.pid"
+STATE_DIR="$HOME/.local/state/dwm/indicators"
+OUTPUT_DIR="$HOME/Videos/Screenrecords"
 
-case "$MODE" in
-  start)
-    if [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
-      notify-send "Screenrecord" "Already recording (PID $(cat "$PIDFILE"))"
-      exit 0
+DESKTOP_AUDIO="false"
+MICROPHONE_AUDIO="false"
+WEBCAM="false"
+WEBCAM_DEVICE=""
+RESOLUTION=""
+STOP_RECORDING="false"
+
+for arg in "$@"; do
+  case "$arg" in
+    --with-desktop-audio)    DESKTOP_AUDIO="true" ;;
+    --with-microphone-audio) MICROPHONE_AUDIO="true" ;;
+    --with-webcam)           WEBCAM="true" ;;
+    --webcam-device=*)       WEBCAM_DEVICE="${arg#*=}" ;;
+    --resolution=*)          RESOLUTION="${arg#*=}" ;;
+    --stop-recording)        STOP_RECORDING="true" ;;
+  esac
+done
+
+screenrecording_active() {
+  [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null
+}
+
+start_webcam_overlay() {
+  cleanup_webcam
+
+  if [[ -z "$WEBCAM_DEVICE" ]]; then
+    WEBCAM_DEVICE=$(v4l2-ctl --list-devices 2>/dev/null | grep -m1 '^\s*/dev/video' | tr -d ' \t')
+    if [[ -z "$WEBCAM_DEVICE" ]]; then
+      notify-send "Screenrecord" "No webcam found" -u critical -t 3000
+      return 1
     fi
-    FILE="$DIR/$(date +%Y-%m-%d_%H-%M-%S).mp4"
-    # Get screen geometry
-    geoinfo=$(xrandr --current | grep primary | awk '{print $4}')
-    if [[ -z "$geoinfo" ]]; then
-      geoinfo=$(xrandr --current | grep '*' | head -1 | awk '{print $1}')
+  fi
+
+  local available=$(v4l2-ctl --list-formats-ext -d "$WEBCAM_DEVICE" 2>/dev/null)
+  local video_size=""
+  for res in 640x360 1280x720 1920x1080; do
+    if echo "$available" | grep -q "$res"; then
+      video_size="-video_size $res"
+      break
     fi
-    ffmpeg -f x11grab -video_size "$geoinfo" -i "$DISPLAY" -f pulse -i default "$FILE" &
-    echo $! > "$PIDFILE"
-    notify-send "Screenrecord" "Recording started → $FILE"
-    ;;
-  stop)
-    if [[ ! -f "$PIDFILE" ]]; then
-      notify-send "Screenrecord" "Not recording"
-      exit 0
+  done
+
+  ffplay -f v4l2 $video_size -framerate 30 "$WEBCAM_DEVICE" \
+    -vf "crop=iw/2:ih,scale=360:-1" \
+    -window_title "WebcamOverlay" -noborder \
+    -fflags nobuffer -flags low_delay \
+    -probesize 32 -analyzeduration 0 -loglevel quiet &
+  sleep 1
+}
+
+cleanup_webcam() {
+  pkill -f "WebcamOverlay" 2>/dev/null
+}
+
+default_resolution() {
+  local geoinfo
+  geoinfo=$(xrandr --current | awk '
+    / connected/ {
+      for (i = 1; i <= NF; i++) {
+        if ($i ~ /^[0-9]+x[0-9]+[+-]/) {
+          split($i, a, "+")
+          print a[1]
+          exit
+        }
+      }
+    }')
+  local width="${geoinfo%x*}" height="${geoinfo#*x}"
+  width=${width:-0} height=${height:-0}
+  if (( width > 3840 || height > 2160 )); then
+    echo "3840x2160"
+  else
+    echo "0x0"
+  fi
+}
+
+get_monitor_rects() {
+  xrandr --current | awk '
+    / connected/ {
+      for (i = 1; i <= NF; i++) {
+        if ($i ~ /^[0-9]+x[0-9]+[+-]/) {
+          split($i, a, /[x+]/)
+          print a[3]","a[4]" "a[1]"x"a[2]
+          break
+        }
+      }
+    }'
+}
+
+get_window_rects() {
+  xdotool search -visible "" 2>/dev/null | while read -r wid; do
+    xwininfo -id "$wid" 2>/dev/null | awk '
+      /Absolute upper-left X:/ { x = $NF }
+      /Absolute upper-left Y:/ { y = $NF }
+      /Width:/ { w = $NF }
+      /Height:/ { h = $NF }
+      END { if (w && h) print x","y" "w"x"h }
+    '
+  done
+}
+
+select_capture_target() {
+  local rects
+  rects=$(get_monitor_rects)
+  rects="$rects"$'\n'"$(get_window_rects)"
+
+  local selection
+  selection=$(echo "$rects" | slop -f "%g" -b 2 -t 0 -c 0.3,0.6,0.9,0.4 2>/dev/null)
+  [[ -z "$selection" ]] && return 1
+
+  local sw sh sx sy
+  IFS='x+' read -r sw sh sx sy <<< "$selection"
+
+  if (( sw * sh < 20 )); then
+    while IFS= read -r rect; do
+      [[ "$rect" =~ ^([0-9]+),([0-9]+)\ ([0-9]+)x([0-9]+)$ ]] || continue
+      local rx="${BASH_REMATCH[1]}" ry="${BASH_REMATCH[2]}"
+      local rw="${BASH_REMATCH[3]}" rh="${BASH_REMATCH[4]}"
+      if (( sx >= rx && sx < rx + rw && sy >= ry && sy < ry + rh )); then
+        sx=$rx sy=$ry sw=$rw sh=$rh
+        break
+      fi
+    done <<< "$rects"
+  fi
+
+  local monitor_name
+  monitor_name=$(xrandr --current | awk -v x="$sx" -v y="$sy" -v w="$sw" -v h="$sh" '
+    $2 == "connected" {
+      for (i = 1; i <= NF; i++) {
+        if ($i ~ /^[0-9]+x[0-9]+[+-]/) {
+          split($i, a, /[x+]/)
+          if (a[3] == x && a[4] == y && a[1] == w && a[2] == h) {
+            print $1
+            exit
+          }
+        }
+      }
+    }
+  ')
+
+  if [[ -n "$monitor_name" ]]; then
+    echo "monitor:${sw}x${sh}+${sx}+${sy}"
+  else
+    echo "region:${sw}x${sh}+${sx}+${sy}"
+  fi
+}
+
+finalize_recording() {
+  local latest="$1"
+  [[ -f "$latest" ]] || return
+
+  local video_codec=(-c:v copy)
+  local args=(-y -ss 0.1 -i "$latest" "${video_codec[@]}")
+
+  if ffprobe -v error -show_entries stream=codec_type -of csv=p=0 "$latest" 2>/dev/null | grep -q audio; then
+    args+=(-af "volume=enable='lt(t,0.4)':volume=0,afade=t=in:st=0.4:d=0.05,loudnorm=I=-14:TP=-1.5:LRA=11")
+  fi
+
+  local processed="${latest%.mp4}-processed.mp4"
+  if ffmpeg "${args[@]}" "$processed" -loglevel quiet 2>/dev/null; then
+    mv "$processed" "$latest"
+  else
+    rm -f "$processed"
+  fi
+}
+
+start_screenrecording() {
+  local target
+  target=$(select_capture_target) || {
+    cleanup_webcam
+    return
+  }
+
+  local size="${target#*:}"
+  size="${size%%+*}"
+  local offset="${target#${target%%+*}}"
+  local x="${offset#+}"
+  x="${x%+*}"
+  local y="${offset##*+}"
+
+  [[ -z "$x" ]] && x=0
+  [[ -z "$y" ]] && y=0
+  [[ -z "$size" ]] && size=$(default_resolution)
+  [[ "$size" == "0x0" ]] && size=$(xrandr --current | awk '
+    / connected/ {
+      for (i = 1; i <= NF; i++) {
+        if ($i ~ /^[0-9]+x[0-9]+[+-]/) {
+          split($i, a, "+")
+          print a[1]
+          exit
+        }
+      }
+    }')
+  [[ -n "$RESOLUTION" ]] && size="$RESOLUTION"
+
+  [[ "$WEBCAM" == "true" ]] && start_webcam_overlay
+
+  local filename="$OUTPUT_DIR/screenrecording-$(date +%Y-%m-%d_%H-%M-%S).mp4"
+  mkdir -p "$OUTPUT_DIR"
+  mkdir -p "$STATE_DIR"
+
+  local audio_inputs=()
+  local filter_labels=()
+  local map_args=(-map 0:v)
+
+  if [[ "$DESKTOP_AUDIO" == "true" ]]; then
+    local sink=$(pactl get-default-sink 2>/dev/null)
+    audio_inputs+=(-f pulse -i "${sink}.monitor")
+    filter_labels+=("[1:a]")
+  fi
+
+  if [[ "$MICROPHONE_AUDIO" == "true" ]]; then
+    local source=$(pactl get-default-source 2>/dev/null)
+    audio_inputs+=(-f pulse -i "${source}")
+    if [[ "$DESKTOP_AUDIO" == "true" ]]; then
+      filter_labels+=("[2:a]")
+    else
+      filter_labels+=("[1:a]")
     fi
-    kill "$(cat "$PIDFILE")" 2>/dev/null || true
+  fi
+
+  if (( ${#filter_labels[@]} > 1 )); then
+    map_args+=(-filter_complex "${filter_labels[*]}amix=inputs=${#filter_labels[@]}:duration=first[aout]" -map "[aout]" -c:a aac -ac 2)
+  elif (( ${#filter_labels[@]} == 1 )); then
+    map_args+=(-map "${filter_labels[0]#\[}" -c:a aac -ac 2)
+  fi
+
+  ffmpeg \
+    -f x11grab -video_size "$size" -framerate 60 \
+    -i "${DISPLAY}+${x},${y}" \
+    "${audio_inputs[@]}" \
+    "${map_args[@]}" \
+    -c:v libx264 -preset veryfast -crf 23 \
+    "$filename" &
+
+  local pid=$!
+  echo "$pid" > "$PIDFILE"
+  echo "$filename" > "$RECORDING_FILE"
+  echo "active" > "$STATE_DIR/screen-recording"
+  notify-send "Screenrecord" "Recording started"
+}
+
+stop_screenrecording() {
+  if [[ ! -f "$PIDFILE" ]]; then
+    echo "inactive" > "$STATE_DIR/screen-recording"
+    notify-send "Screenrecord" "Not recording"
+    return
+  fi
+
+  local pid=$(cat "$PIDFILE")
+  if ! kill -0 "$pid" 2>/dev/null; then
     rm -f "$PIDFILE"
-    notify-send "Screenrecord" "Recording stopped"
-    ;;
-  *)
-    echo "Usage: dwm-cmd-screenrecord [start|stop]"
-    exit 1
-    ;;
-esac
+    echo "inactive" > "$STATE_DIR/screen-recording"
+    notify-send "Screenrecord" "Recording already ended"
+    return
+  fi
+
+  kill -INT "$pid" 2>/dev/null
+
+  local count=0
+  while kill -0 "$pid" 2>/dev/null && ((count < 50)); do
+    sleep 0.1
+    ((count++))
+  done
+
+  cleanup_webcam
+  rm -f "$PIDFILE"
+  echo "inactive" > "$STATE_DIR/screen-recording"
+
+  if kill -0 "$pid" 2>/dev/null; then
+    kill -9 "$pid" 2>/dev/null
+    notify-send "Screenrecord" "Recording force-killed" -u critical -t 5000
+    return
+  fi
+
+  local filename
+  filename=$(cat "$RECORDING_FILE" 2>/dev/null)
+  rm -f "$RECORDING_FILE"
+
+  if [[ -f "$filename" ]]; then
+    finalize_recording "$filename"
+
+    local preview="${filename%.mp4}-preview.png"
+    ffmpeg -y -i "$filename" -ss 00:00:00.1 -vframes 1 -q:v 2 "$preview" -loglevel quiet 2>/dev/null
+
+    (
+      action=$(notify-send "Screenrecord" "$filename" -t 10000 -i "$preview" -A "default=open" 2>/dev/null || true)
+      [[ "$action" == "default" ]] && xdg-open "$filename" &
+      rm -f "$preview"
+    ) &
+  fi
+}
+
+if screenrecording_active; then
+  stop_screenrecording
+elif [[ "$STOP_RECORDING" == "true" ]]; then
+  exit 1
+else
+  start_screenrecording || cleanup_webcam
+fi

@@ -1,28 +1,117 @@
 #!/bin/bash
 
-MODE="${1:-region}"
-DIR="$HOME/Pictures/Screenshots"
-mkdir -p "$DIR"
-FILE="$DIR/$(date +%Y-%m-%d_%H-%M-%S).png"
+OUTPUT_DIR="$HOME/Pictures/Screenshots"
+mkdir -p "$OUTPUT_DIR"
+
+SCREENSHOT_EDITOR="xdg-open"
+
+ARGS=()
+for arg in "$@"; do
+  if [[ "$arg" == --editor=* ]]; then
+    SCREENSHOT_EDITOR="${arg#*=}"
+  else
+    ARGS+=("$arg")
+  fi
+done
+set -- "${ARGS[@]}"
+
+open_editor() {
+  local filepath="$1"
+  "$SCREENSHOT_EDITOR" "$filepath"
+}
+
+MODE="${1:-smart}"
+PROCESSING="${2:-slurp}"
+
+get_monitor_rects() {
+  xrandr --current | awk '
+    / connected/ {
+      for (i = 1; i <= NF; i++) {
+        if ($i ~ /^[0-9]+x[0-9]+[+-]/) {
+          split($i, a, /[x+]/)
+          print a[3]","a[4]" "a[1]"x"a[2]
+          break
+        }
+      }
+    }'
+}
+
+get_window_rects() {
+  xdotool search -visible "" 2>/dev/null | while read -r wid; do
+    xwininfo -id "$wid" 2>/dev/null | awk '
+      /Absolute upper-left X:/ { x = $NF }
+      /Absolute upper-left Y:/ { y = $NF }
+      /Width:/ { w = $NF }
+      /Height:/ { h = $NF }
+      END { if (w && h) print x","y" "w"x"h }
+    '
+  done
+}
+
+SELECTION=""
 
 case "$MODE" in
-  full)
-    maim "$FILE"
-    xclip -selection clipboard -t image/png -i "$FILE"
-    notify-send "Screenshot" "Fullscreen saved to $FILE"
-    ;;
   region)
-    maim -s "$FILE"
-    xclip -selection clipboard -t image/png -i "$FILE"
-    notify-send "Screenshot" "Region saved to $FILE"
+    SELECTION=$(slop -f "%g" -b 2 -t 0 -c 0.3,0.6,0.9,0.4 2>/dev/null)
     ;;
-  window)
-    maim -i "$(xdotool getactivewindow)" "$FILE"
-    xclip -selection clipboard -t image/png -i "$FILE"
-    notify-send "Screenshot" "Window saved to $FILE"
+  windows)
+    RECTS=$(get_window_rects)
+    SELECTION=$(echo "$RECTS" | slop -r -f "%g" -b 2 -t 0 -c 0.3,0.6,0.9,0.4 2>/dev/null)
     ;;
-  *)
-    echo "Usage: dwm-cmd-screenshot [full|region|window]"
-    exit 1
+  fullscreen)
+    SELECTION=$(xrandr --current | awk '
+      / connected/ {
+        for (i = 1; i <= NF; i++) {
+          if ($i ~ /^[0-9]+x[0-9]+[+-]/) {
+            print $i
+            exit
+          }
+        }
+      }')
+    ;;
+  smart | *)
+    RECTS=$(get_monitor_rects)
+    RECTS="$RECTS"$'\n'"$(get_window_rects)"
+    SELECTION=$(echo "$RECTS" | slop -f "%g" -b 2 -t 0 -c 0.3,0.6,0.9,0.4 2>/dev/null)
+
+    if [[ "$SELECTION" =~ ^([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)$ ]]; then
+      sw="${BASH_REMATCH[1]}" sh="${BASH_REMATCH[2]}"
+      sx="${BASH_REMATCH[3]}" sy="${BASH_REMATCH[4]}"
+      if (( sw * sh < 20 )); then
+        while IFS= read -r rect; do
+          [[ "$rect" =~ ^([0-9]+),([0-9]+)\ ([0-9]+)x([0-9]+)$ ]] || continue
+          rx="${BASH_REMATCH[1]}" ry="${BASH_REMATCH[2]}"
+          rw="${BASH_REMATCH[3]}" rh="${BASH_REMATCH[4]}"
+          if (( sx >= rx && sx < rx + rw && sy >= ry && sy < ry + rh )); then
+            SELECTION="${rw}x${rh}+${rx}+${ry}"
+            break
+          fi
+        done <<< "$RECTS"
+      fi
+    fi
+    ;;
+esac
+
+[[ -z "$SELECTION" ]] && exit 0
+
+FILENAME="screenshot-$(date +%Y-%m-%d_%H-%M-%S).png"
+FILEPATH="$OUTPUT_DIR/$FILENAME"
+
+case "$PROCESSING" in
+  copy)
+    maim -g "$SELECTION" | xclip -selection clipboard -t image/png
+    notify-send "Screenshot" "Copied to clipboard"
+    ;;
+  save)
+    maim -g "$SELECTION" "$FILEPATH" || exit 1
+    notify-send "Screenshot" "Saved to $FILEPATH"
+    ;;
+  slurp | *)
+    maim -g "$SELECTION" "$FILEPATH" || exit 1
+    xclip -selection clipboard -t image/png -i "$FILEPATH"
+    (
+      action=$(notify-send "Screenshot" "$FILEPATH" -t 10000 -i "$FILEPATH" -A "default=edit" 2>/dev/null || true)
+      [[ "$action" == "default" ]] && open_editor "$FILEPATH"
+    ) &
     ;;
 esac
