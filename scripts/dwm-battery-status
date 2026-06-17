@@ -1,7 +1,20 @@
 #!/bin/bash
-BATTERY=$(upower -e | grep BAT | head -1)
-if [[ -z "$BATTERY" ]]; then
+
+set -euo pipefail
+
+BATTERY="$(upower -e | grep -m1 battery || true)"
+
+[[ -n "$BATTERY" ]] || {
   notify-send "Battery" "No battery found"
   exit 0
-fi
-upower -i "$BATTERY" | notify-send "Battery" "$(cat)"
+}
+
+INFO="$(upower -i "$BATTERY")"
+
+STATE="$(awk -F': *' '/state/ {print $2}' <<< "$INFO")"
+PCT="$(awk -F': *' '/percentage/ {gsub("%","",$2); print $2}' <<< "$INFO")"
+TIME="$(awk -F': *' '/time to empty/ {print $2}' <<< "$INFO")"
+
+notify-send "Battery" "State: $STATE
+Charge: ${PCT}%
+Remaining: $TIME"

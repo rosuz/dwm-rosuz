@@ -57,6 +57,9 @@ if command -v checkupdates >/dev/null 2>&1 || command -v yay >/dev/null 2>&1 || 
   "$DWM_PATH/scripts/dwm-check-update" &
 fi
 
+# Start battery monitor daemon
+"$DWM_PATH/scripts/dwm-battery-daemon" &
+
 # Ensure dwm scripts are in PATH for bar click handlers
 export PATH="$PATH:$DWM_PATH/scripts:$DWM_PATH/scripts/polybar"
 

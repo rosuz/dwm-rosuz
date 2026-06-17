@@ -1,9 +1,44 @@
 #!/bin/bash
-[[ -z "$DISPLAY" ]] && exit 0
 
-BATTERY=$(upower -e | grep -i battery | head -n1)
-[[ -z "$BATTERY" ]] && exit 0
-PCT=$(upower -i "$BATTERY" | awk -F: '/percentage/ { gsub(/[%[:space:]]/, "", $2); printf "%d", $2+0.5 }')
-if   [[ "$PCT" -lt 10 ]]; then notify-send -u critical "Battery critical: ${PCT}%"
-elif [[ "$PCT" -lt 20 ]]; then notify-send -u normal "Battery low: ${PCT}%"
+set -euo pipefail
+
+[[ -n "${DISPLAY:-}" ]] || exit 0
+
+BATTERY="$(
+    upower -e |
+    grep -m1 battery || true
+)"
+
+[[ -n "$BATTERY" ]] || exit 0
+
+STATE="$(
+    upower -i "$BATTERY" |
+    awk -F': *' '/state/ {print $2}'
+)"
+
+[[ "$STATE" == "discharging" ]] || exit 0
+
+PCT="$(
+    upower -i "$BATTERY" |
+    awk -F': *' '/percentage/ {
+        gsub("%", "", $2)
+        print int($2)
+    }'
+)"
+
+[[ -n "$PCT" ]] || exit 0
+
+if (( PCT < 10 )); then
+    notify-send \
+        -u critical \
+        -r 9991 \
+        "Battery critical" \
+        "${PCT}% remaining"
+
+elif (( PCT < 20 )); then
+    notify-send \
+        -u normal \
+        -r 9991 \
+        "Battery low" \
+        "${PCT}% remaining"
 fi

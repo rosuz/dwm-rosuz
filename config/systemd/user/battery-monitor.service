@@ -1,7 +1,0 @@
-[Unit]
-Description=DWM Battery Monitor Check
-
-[Service]
-Type=oneshot
-ExecStart=dwm-battery-monitor
-LogLevelMax=warning
