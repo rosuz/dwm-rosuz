@@ -57,6 +57,9 @@ if command -v checkupdates >/dev/null 2>&1 || command -v yay >/dev/null 2>&1 || 
   "$DWM_PATH/scripts/dwm-check-update" &
 fi
 
+# Start PiP position daemon
+"$DWM_PATH/scripts/dwm-pip-position" &
+
 # Start battery monitor daemon
 "$DWM_PATH/scripts/dwm-battery-daemon" &
 
