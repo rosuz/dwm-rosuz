@@ -69,6 +69,15 @@ echo "Selected theme: $theme"
 # Generate theme
 "$DWM_PATH/scripts/dwm-theme-switch" "$theme"
 
+# Install bash config
+echo ""
+read -rp "Copy bashrc to ~/.bashrc and config/bash/* to ~/.config/bash/? [Y/n] " ans
+if [[ ! "$ans" =~ ^[nN] ]]; then
+    cp "$DWM_PATH/bashrc" "$REAL_HOME/.bashrc"
+    cp -r "$DWM_PATH/config/bash/" "$REAL_HOME/.config/bash/"
+    echo "Bash config installed."
+fi
+
 # Add dwm scripts to PATH
 path_line="export PATH=\"\$PATH:$REAL_HOME/.local/share/dwm/scripts\""
 grep -qxF "$path_line" "$REAL_HOME/.bashrc" 2>/dev/null || echo "$path_line" >> "$REAL_HOME/.bashrc"
