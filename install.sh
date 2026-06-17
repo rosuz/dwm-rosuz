@@ -70,9 +70,8 @@ echo "Selected theme: $theme"
 "$DWM_PATH/scripts/dwm-theme-switch" "$theme"
 
 # Add dwm scripts to PATH
-profile="$REAL_HOME/.bashrc"
-path_line="export PATH=\"\$PATH:$DWM_PATH/scripts\""
-grep -qxF "export PATH=\"\$PATH:$DWM_PATH/scripts\"" "$profile" 2>/dev/null || echo "export PATH=\"\$PATH:$DWM_PATH/scripts\"" >> "$profile"
+path_line="export PATH=\"\$PATH:$REAL_HOME/.local/share/dwm/scripts\""
+grep -qxF "$path_line" "$REAL_HOME/.bashrc" 2>/dev/null || echo "$path_line" >> "$REAL_HOME/.bashrc"
 
 # Install config files
 echo ""
@@ -81,6 +80,15 @@ if [[ ! "$ans" =~ ^[nN] ]]; then
     cp -r "$DWM_PATH/config/." "$REAL_HOME/.config/"
     echo "Config files installed."
 fi
+
+# Deploy runtime files to ~/.local/share/dwm
+echo "Deploying runtime files to ~/.local/share/dwm..."
+rm -rf "$REAL_HOME/.local/share/dwm"
+mkdir -p "$REAL_HOME/.local/share/dwm"
+cp -r "$DWM_PATH/scripts" "$REAL_HOME/.local/share/dwm/"
+cp -r "$DWM_PATH/themes" "$REAL_HOME/.local/share/dwm/"
+cp -r "$DWM_PATH/templates" "$REAL_HOME/.local/share/dwm/"
+echo "Runtime files deployed."
 
 # Install Alacritty desktop entry for xdg-terminal-exec
 mkdir -p "$REAL_HOME/.local/share/applications"

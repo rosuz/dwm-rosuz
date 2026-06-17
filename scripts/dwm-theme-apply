@@ -18,12 +18,6 @@ if [[ -f "$CURRENT_DIR/btop.theme" ]]; then
   ln -sf "$CURRENT_DIR/btop.theme" "$HOME/.config/btop/themes/current.theme"
 fi
 
-# Ensure static dunst base config
-if [[ -f "$DWM_PATH/config/dunst/dunstrc" ]]; then
-  mkdir -p "$HOME/.config/dunst"
-  ln -sf "$DWM_PATH/config/dunst/dunstrc" "$HOME/.config/dunst/dunstrc"
-fi
-
 # Install themed dunst colors
 if [[ -f "$CURRENT_DIR/dunstrc" ]]; then
   mkdir -p "$HOME/.config/dunst/dunstrc.d"
