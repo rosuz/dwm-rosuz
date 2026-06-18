@@ -9,31 +9,9 @@ else
   REAL_HOME="$HOME"
 fi
 
+source "$DWM_PATH/scripts/dwm-install-deps"
+
 echo "=== dwm 6.8 Installer ==="
-
-# Check dependencies
-missing=()
-for cmd in make gcc xorg-server xorg-xinit libx11 libxft libxinerama feh polybar dunst i3lock-color maim xclip ffmpeg xautolock imagemagick xdotool upower; do
-  if ! command -v "$cmd" &>/dev/null && ! pacman -Qi "$cmd" &>/dev/null 2>&1; then
-    missing+=("$cmd")
-  fi
-done
-
-# For pkg-config libs
-for lib in x11 xft xinerama; do
-  if ! pkg-config --exists "$lib" 2>/dev/null; then
-    lib_pkg="lib${lib}"
-    [[ "$lib" == "xinerama" ]] && lib_pkg="libxinerama"
-    missing+=("$lib_pkg")
-  fi
-done
-
-if [[ ${#missing[@]} -gt 0 ]]; then
-  echo "Missing dependencies: ${missing[*]}"
-  echo "Install them first:"
-  echo "  sudo pacman -S ${missing[*]}"
-  exit 1
-fi
 
 # Theme selection
 themes=()

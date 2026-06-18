@@ -1,0 +1,74 @@
+#!/bin/bash
+
+echo "=== Installing dependencies ==="
+
+# --- Prerequisites ---
+if ! command -v git &>/dev/null; then
+  sudo pacman -S --noconfirm git
+fi
+if ! command -v make &>/dev/null; then
+  sudo pacman -S --noconfirm base-devel
+fi
+
+# --- Enable multilib if disabled ---
+if grep -q '^#\[multilib\]' /etc/pacman.conf; then
+  echo "Enabling multilib repository..."
+  sudo sed -i '/^#\[multilib\]/,/^#Include/s/^#//' /etc/pacman.conf
+  sudo pacman -Sy
+fi
+
+# --- Prompt AUR helper ---
+echo ""
+echo "AUR helper selection:"
+echo "  1) paru (default)"
+echo "  2) yay"
+read -rp "Choice [1/2, default=1]: " aur_choice
+
+if [[ "$aur_choice" == "2" ]]; then
+  HELPER="yay"
+else
+  HELPER="paru"
+fi
+
+# --- Install AUR helper if missing ---
+if ! command -v "$HELPER" &>/dev/null; then
+  echo "Installing $HELPER from AUR..."
+
+  if [[ -n "$SUDO_USER" ]]; then
+    BUILD_USER="$SUDO_USER"
+  else
+    BUILD_USER="$USER"
+  fi
+
+  sudo -u "$BUILD_USER" git clone --depth 1 \
+    "https://aur.archlinux.org/$HELPER.git" "/tmp/$HELPER"
+
+  (cd "/tmp/$HELPER" && sudo -u "$BUILD_USER" makepkg -si --noconfirm)
+fi
+
+# --- Official repo packages ---
+PACMAN_PKGS=(
+  libx11 libxft libxinerama libxcb xcb-util-resource
+  xorg-server xorg-xinit xorg-xrandr xorg-xprop
+  xorg-xinput xorg-setxkbmap xorg-xset
+  feh polybar dunst maim xclip ffmpeg xautolock
+  imagemagick xdotool upower rofi slop i3lock wmctrl
+  pamixer brightnessctl pulseaudio-utils
+  bluez-utils rfkill fzf inotify-tools v4l-utils
+  pacman-contrib libnotify xdg-utils
+  alacritty btop neovim
+  ttf-jetbrains-mono-nerd
+)
+
+echo "Installing official packages..."
+sudo pacman -S --noconfirm --needed "${PACMAN_PKGS[@]}"
+
+# --- AUR packages ---
+AUR_PKGS=(
+  localsend-bin
+)
+
+echo "Installing AUR packages..."
+"$HELPER" -S --noconfirm --needed "${AUR_PKGS[@]}"
+
+echo "=== Dependencies installed ==="

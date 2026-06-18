@@ -2,10 +2,15 @@
 set -euo pipefail
 
 DWM_PATH="$(cd "$(dirname "$0")/.." && pwd)"
+LOCK_IMG="$DWM_PATH/themes/current/lock-blur.png"
 
 pkill -SIGUSR1 dunst 2>/dev/null || true
 setxkbmap -layout us
 
-"$DWM_PATH/themes/current/lock-screen"
+if [[ -f "$LOCK_IMG" ]]; then
+    i3lock -n -i "$LOCK_IMG" -t
+else
+    i3lock -n -c 000000
+fi
 
 pkill -SIGUSR2 dunst 2>/dev/null || true
