@@ -2,5 +2,5 @@
 Type=Application
 Name=Browser
 Exec=dwm-launch-browser %u
-Icon=web-browser
+Icon=org.dwm.browser
 Categories=Network;WebBrowser;

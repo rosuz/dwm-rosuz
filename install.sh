@@ -94,9 +94,8 @@ fi
 echo "Deploying runtime files to ~/.local/share/dwm..."
 rm -rf "$REAL_HOME/.local/share/dwm"
 mkdir -p "$REAL_HOME/.local/share/dwm"
-cp -r "$DWM_PATH/scripts" "$REAL_HOME/.local/share/dwm/"
-cp -r "$DWM_PATH/themes" "$REAL_HOME/.local/share/dwm/"
-cp -r "$DWM_PATH/templates" "$REAL_HOME/.local/share/dwm/"
+cp -r "$DWM_PATH"/. "$REAL_HOME/.local/share/dwm/"
+rm -rf "$REAL_HOME/.local/share/dwm/.git"
 echo "Runtime files deployed."
 
 # Install Alacritty desktop entry for xdg-terminal-exec
@@ -110,6 +109,13 @@ fi
 if [[ -f "$DWM_PATH/applications/org.dwm.browser.desktop" ]]; then
     cp "$DWM_PATH/applications/org.dwm.browser.desktop" "$REAL_HOME/.local/share/applications/"
     echo "Browser desktop entry installed."
+fi
+
+# Install browser icon
+if [[ -f "$DWM_PATH/applications/icons/browser.svg" ]]; then
+    mkdir -p "$REAL_HOME/.local/share/icons/hicolor/scalable/apps"
+    cp "$DWM_PATH/applications/icons/browser.svg" "$REAL_HOME/.local/share/icons/hicolor/scalable/apps/org.dwm.browser.svg"
+    echo "Browser icon installed."
 fi
 
 update-desktop-database "$REAL_HOME/.local/share/applications" 2>/dev/null || true
