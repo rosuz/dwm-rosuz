@@ -56,7 +56,7 @@ PACMAN_PKGS=(
   pamixer brightnessctl
   bluez-utils rfkill fzf inotify-tools v4l-utils
   pacman-contrib libnotify xdg-utils
-  alacritty btop neovim wiremix bluetui impala less starship zoxide
+  alacritty btop neovim wiremix bluetui impala less starship zoxide fastfetch bat bash-completion
   ttf-jetbrains-mono-nerd
 )
 
