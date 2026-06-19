@@ -56,10 +56,6 @@ if [[ ! "$ans" =~ ^[nN] ]]; then
     echo "Bash config installed."
 fi
 
-# Add dwm scripts to PATH
-path_line="export PATH=\"\$PATH:$REAL_HOME/.local/share/dwm/scripts\""
-grep -qxF "$path_line" "$REAL_HOME/.bashrc" 2>/dev/null || echo "$path_line" >> "$REAL_HOME/.bashrc"
-
 # Install config files
 echo ""
 read -rp "Copy config files from dwm/config/ to ~/.config/? [Y/n] " ans

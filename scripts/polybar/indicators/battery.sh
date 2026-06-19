@@ -5,11 +5,13 @@ DWM="$(cd "$(dirname "$0")/../../.." && pwd)"
 BAT="/sys/class/power_supply/BAT0"
 AC="/sys/class/power_supply/ADP0/online"
 
+[[ -d "$BAT" ]] || exit 0
+
 cap=$(cat "$BAT/capacity")
 status=$(cat "$BAT/status")
-ac=$(cat "$AC")
+ac=$(cat "$AC" 2>/dev/null || echo 0)
 
-CLICK='%{A1:notify-send "Battery" "$(cat /sys/class/power_supply/BAT0/capacity)%":}%{A3:dwm-battery-status:}'
+CLICK='%{A1:notify-send "Battery" "$(cat '"$BAT"'/capacity)%":}%{A3:dwm-battery-status:}'
 CLICK_END='%{A}%{A}'
 
 POLY_RED=$(awk -F'= ' '/^red/ {print $2}' "$DWM/themes/current/polybar.ini")

@@ -22,8 +22,8 @@ export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_STATE_HOME="$HOME/.local/state"
 export XDG_CACHE_HOME="$HOME/.cache"
 
-# dotfiles main foder
-export DOTFILES_PATH="$HOME/.local/share/dotfiles"
+# dwm path
+export DWM_PATH="$HOME/.local/share/dwm"
 
 # Seeing as other scripts will use it might as well export it
 export LINUXTOOLBOXDIR="$HOME/linuxtoolbox"

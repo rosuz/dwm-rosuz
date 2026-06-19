@@ -48,15 +48,15 @@ fi
 
 # --- Official repo packages ---
 PACMAN_PKGS=(
-  libx11 libxft libxinerama libxcb xcb-util-resource
+  libx11 libxft libxinerama libxcb
   xorg-server xorg-xinit xorg-xrandr xorg-xprop
-  xorg-xinput xorg-setxkbmap xorg-xset
-  feh polybar dunst maim xclip ffmpeg xautolock
+  xorg-xinput xorg-setxkbmap xorg-xset xorg-xwininfo
+  feh polybar dunst maim xclip ffmpeg
   imagemagick xdotool upower rofi slop i3lock wmctrl
-  pamixer brightnessctl pulseaudio-utils
+  pamixer brightnessctl
   bluez-utils rfkill fzf inotify-tools v4l-utils
   pacman-contrib libnotify xdg-utils
-  alacritty btop neovim
+  alacritty btop neovim wiremix bluetui impala less starship zoxide
   ttf-jetbrains-mono-nerd
 )
 
@@ -66,6 +66,9 @@ sudo pacman -S --noconfirm --needed "${PACMAN_PKGS[@]}"
 # --- AUR packages ---
 AUR_PKGS=(
   localsend-bin
+  xautolock
+  greenclip
+  xdg-terminal-exec
 )
 
 echo "Installing AUR packages..."
