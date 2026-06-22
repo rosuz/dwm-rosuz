@@ -6,8 +6,8 @@ DWM_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 rm -rf "$HOME/.local/state/dwm/indicators"
 
 # Restore keyboard and touchpad settings
-if [ -f "$HOME/.config/dwm/dwm-input-config" ]; then
-  . "$HOME/.config/dwm/dwm-input-config"
+if [ -f "$HOME/.config/dwm/input-config" ]; then
+  . "$HOME/.config/dwm/input-config"
   setxkbmap -layout "$kbd_layout" ${kbd_variant:+-variant "$kbd_variant"}
 
   TPAD=$(xinput list --name-only 2>/dev/null | while read -r dev; do
