@@ -19,7 +19,7 @@ while true; do
   monitor_w=${monitor_w:-2560}
   monitor_h=${monitor_h:-1440}
 
-  wid=$(xdotool search --sync --name "Picture-in-Picture" 2>/dev/null | tail -1)
+  wid=$(xdotool search --sync --name "Picture" 2>/dev/null | tail -1)
   [[ -z "$wid" ]] && continue
   xdotool windowsize "$wid" "$PIP_WIDTH" "$PIP_HEIGHT" 2>/dev/null
   xdotool windowmove "$wid" $((monitor_w - PIP_WIDTH - MARGIN_RIGHT)) $((monitor_h * MARGIN_TOP_PCT / 100)) 2>/dev/null

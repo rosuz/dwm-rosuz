@@ -36,7 +36,7 @@ static const Rule rules[] = {
 	{ "org.dwm.browser",      NULL,     NULL,                      1 << 1,    0,          0,          -1,        -1 },
 	{ "org.dwm.terminal",     NULL,     NULL,                      0,         0,          1,           0,        -1 },
 	{ "dwm-system-update",    NULL,     NULL,                      0,         1,          0,           0,        -1 },
-	{ NULL,                   NULL,     "Picture-in-Picture",     ~0,         1,          0,           0,        -1 },
+	{ NULL,                   NULL,     "Picture",                ~0,         1,          0,           0,        -1 },
 	{ NULL,                   NULL,     "Event Tester",            0,         0,          0,           1,        -1 }, /* xev */
 };
 
