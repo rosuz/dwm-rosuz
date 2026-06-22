@@ -2231,6 +2231,10 @@ unmanage(Client *c, int destroyed)
 
 	detach(c);
 	detachstack(c);
+
+	if (c->isfullscreen && !selmon->showbar)
+		togglebar(NULL);
+
 	if (!destroyed) {
 		wc.border_width = c->oldbw;
 		XGrabServer(dpy); /* avoid race conditions */
