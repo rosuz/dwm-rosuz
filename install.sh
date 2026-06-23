@@ -44,8 +44,16 @@ fi
 
 echo "Selected theme: $theme"
 
-# Generate theme
-"$DWM_PATH/scripts/dwm-theme-switch" "$theme"
+# Deploy runtime files first so all scripts run from unified path
+echo "Deploying runtime files to ~/.local/share/dwm..."
+rm -rf "$REAL_HOME/.local/share/dwm"
+mkdir -p "$REAL_HOME/.local/share/dwm"
+cp -r "$DWM_PATH"/. "$REAL_HOME/.local/share/dwm/"
+rm -rf "$REAL_HOME/.local/share/dwm/.git"
+echo "Runtime files deployed."
+
+# Generate and apply theme from runtime path
+"$REAL_HOME/.local/share/dwm/scripts/dwm-theme-switch" "$theme"
 
 # Install bash config
 echo ""
@@ -63,14 +71,6 @@ if [[ ! "$ans" =~ ^[nN] ]]; then
     cp -r "$DWM_PATH/config/." "$REAL_HOME/.config/"
     echo "Config files installed."
 fi
-
-# Deploy runtime files to ~/.local/share/dwm
-echo "Deploying runtime files to ~/.local/share/dwm..."
-rm -rf "$REAL_HOME/.local/share/dwm"
-mkdir -p "$REAL_HOME/.local/share/dwm"
-cp -r "$DWM_PATH"/. "$REAL_HOME/.local/share/dwm/"
-rm -rf "$REAL_HOME/.local/share/dwm/.git"
-echo "Runtime files deployed."
 
 # Install Alacritty desktop entry for xdg-terminal-exec
 mkdir -p "$REAL_HOME/.local/share/applications"
