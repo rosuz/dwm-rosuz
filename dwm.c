@@ -851,6 +851,7 @@ drawbar(Monitor *m)
 	}
 
 	for (c = m->clients; c; c = c->next) {
+		if (strstr(c->name, "Picture")) continue;  // Skip PiP
 		occ |= c->tags;
 		if (c->isurgent)
 			urg |= c->tags;
@@ -2359,8 +2360,10 @@ void
 updateoccupiedtags(void) {
 	unsigned int occ = 0;
 	Client *c;
-	for (c = selmon->clients; c; c = c->next)
+	for (c = selmon->clients; c; c = c->next) {
+		if (strstr(c->name, "Picture")) continue;  // Skip PiP
 		occ |= c->tags;
+	}
 	long data[] = { (long)(occ & TAGMASK) };
 	XChangeProperty(dpy, root, netatom[NetOccupied], XA_CARDINAL, 32,
 		PropModeReplace, (unsigned char *)data, 1);
