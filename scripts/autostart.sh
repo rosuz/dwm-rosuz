@@ -5,21 +5,6 @@ DWM_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 # Reset indicator state on startup (fresh state per boot)
 rm -rf "$HOME/.local/state/dwm/indicators"
 
-# Restore keyboard and touchpad settings
-if [ -f "$HOME/.config/dwm/input-config" ]; then
-  . "$HOME/.config/dwm/input-config"
-  setxkbmap -layout "$kbd_layout" ${kbd_variant:+-variant "$kbd_variant"}
-
-  TPAD=$(xinput list --name-only 2>/dev/null | while read -r dev; do
-    xinput list-props "$dev" 2>/dev/null | grep -q "libinput Tapping Enabled" && echo "$dev" && break
-  done)
-  if [ -n "$TPAD" ]; then
-    xinput set-prop "$TPAD" "libinput Tapping Enabled" "$touchpad_tap"
-    xinput set-prop "$TPAD" "libinput Natural Scrolling Enabled" "$touchpad_natural"
-    xinput set-prop "$TPAD" "libinput Disable While Typing Enabled" "$touchpad_dwt"
-  fi
-fi
-
 # Set wallpaper
 if command -v feh >/dev/null 2>&1; then
   if [[ -f "$DWM_PATH/themes/current/background" ]]; then

@@ -3,9 +3,22 @@
 echo "=== Input Configuration ==="
 echo ""
 
-read -rp "Keyboard layout [us]: " kbd_layout
+read -rp "Keyboard layouts (comma-separated, e.g. us,fr,de) [us]: " kbd_layout
 kbd_layout="${kbd_layout:-us}"
-read -rp "Variant (leave empty for none) [altgr-intl]: " kbd_variant
+kbd_variant=""
+read -rp "Variants (comma-separated, match layouts; blank = none) []: " kbd_variant
+
+read -rp "Group toggle key (e.g. alt+space, win+space, alt+shift, ctrl+shift, caps, menu) [alt+space]: " kbd_toggle
+kbd_toggle="${kbd_toggle:-alt+space}"
+case "$(printf '%s' "$kbd_toggle" | tr '[:upper:]' '[:lower:]')" in
+	alt+space|altspace)        GRP=alt_space_toggle ;;
+	win+space|super+space)     GRP=win_space_toggle ;;
+	alt+shift)                 GRP=alt_shift_toggle ;;
+	ctrl+shift)                GRP=ctrl_shift_toggle ;;
+	caps|capslock)             GRP=caps_toggle ;;
+	menu)                      GRP=menu_toggle ;;
+	*)                         GRP=alt_space_toggle ;;
+esac
 
 read -rp "Tap-to-click? [Y/n]: " ans
 touchpad_tap=0
@@ -19,17 +32,37 @@ read -rp "Disable while typing? [Y/n]: " ans
 touchpad_dwt=0
 [[ ! "$ans" =~ ^[nN] ]] && touchpad_dwt=1
 
-SAVE_DIR="$HOME/.config/dwm"
-SAVE_FILE="$SAVE_DIR/input-config"
-mkdir -p "$SAVE_DIR"
+mkdir -p /etc/X11/xorg.conf.d
 
-cat > "$SAVE_FILE" <<EOF
-kbd_layout="$kbd_layout"
-kbd_variant="$kbd_variant"
-touchpad_tap=$touchpad_tap
-touchpad_natural=$touchpad_natural
-touchpad_dwt=$touchpad_dwt
+# Generate keyboard config
+cat > /etc/X11/xorg.conf.d/00-keyboard.conf <<EOF
+Section "InputClass"
+    Identifier "system-keyboard"
+    MatchIsKeyboard "on"
+    Option "XkbLayout" "$kbd_layout"
+EOF
+
+	if [[ -n "$kbd_variant" ]]; then
+    echo "    Option \"XkbVariant\" \"$kbd_variant\"" >> /etc/X11/xorg.conf.d/00-keyboard.conf
+fi
+
+echo "    Option \"XkbOptions\" \"grp:$GRP,terminate:ctrl_alt_bksp\"" >> /etc/X11/xorg.conf.d/00-keyboard.conf
+echo 'EndSection' >> /etc/X11/xorg.conf.d/00-keyboard.conf
+
+# Generate touchpad config
+cat > /etc/X11/xorg.conf.d/90-touchpad.conf <<EOF
+Section "InputClass"
+    Identifier "touchpad"
+    MatchIsTouchpad "on"
+    Option "Tapping" "$([ $touchpad_tap -eq 1 ] && echo "on" || echo "off")"
+    Option "NaturalScrolling" "$([ $touchpad_natural -eq 1 ] && echo "on" || echo "off")"
+    Option "DisableWhileTyping" "$([ $touchpad_dwt -eq 1 ] && echo "on" || echo "off")"
+EndSection
 EOF
 
 echo ""
-echo "Saved to $SAVE_FILE (applied at next X start)."
+echo "Configuration files installed:"
+echo "  /etc/X11/xorg.conf.d/00-keyboard.conf"
+echo "  /etc/X11/xorg.conf.d/90-touchpad.conf"
+echo ""
+echo "Restart X server to apply changes."

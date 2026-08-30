@@ -5,7 +5,6 @@ DWM_PATH="$(cd "$(dirname "$0")/.." && pwd)"
 LOCK_IMG="$DWM_PATH/themes/current/lock-blur.png"
 
 pkill -SIGUSR1 dunst 2>/dev/null || true
-setxkbmap -layout us
 
 if [[ -f "$LOCK_IMG" ]]; then
     i3lock -n -i "$LOCK_IMG" -t
