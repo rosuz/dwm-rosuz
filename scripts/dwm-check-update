@@ -6,13 +6,9 @@ mkdir -p "$STATE_DIR"
 
 check() {
   count=0
-  if command -v yay >/dev/null 2>&1; then
-    count=$(yay -Qu 2>/dev/null | wc -l || true)
-  elif command -v paru >/dev/null 2>&1; then
-    count=$(paru -Qu 2>/dev/null | wc -l || true)
-  elif command -v checkupdates >/dev/null 2>&1; then
-    count=$(checkupdates 2>/dev/null | wc -l || true)
-  fi
+  command -v yay >/dev/null 2>&1 && count=$((count + $(yay -Qu 2>/dev/null | wc -l || true)))
+  command -v paru >/dev/null 2>&1 && count=$((count + $(paru -Qu 2>/dev/null | wc -l || true)))
+  command -v checkupdates >/dev/null 2>&1 && count=$((count + $(checkupdates 2>/dev/null | wc -l || true)))
   command -v flatpak >/dev/null 2>&1 && count=$((count + $(flatpak remote-ls --updates 2>/dev/null | wc -l || true)))
   echo "$count" > "$STATE_DIR/update-count"
 }
