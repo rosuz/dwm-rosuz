@@ -239,7 +239,6 @@ static void togglefloating(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void unfocus(Client *c, int setfocus);
-static void unfullscreens(Monitor *m);
 static void unmanage(Client *c, int destroyed);
 static void unmanagealtbar(Window w);
 static void unmapnotify(XEvent *e);
@@ -1264,7 +1263,6 @@ manage(Window w, XWindowAttributes *wa)
 	if (c->mon == selmon)
 		unfocus(selmon->sel, 0);
 	c->mon->sel = c;
-	unfullscreens(c->mon);
 	arrange(c->mon);
 	XMapWindow(dpy, c->win);
 	if (term)
@@ -1779,6 +1777,20 @@ void
 setfullscreen(Client *c, int fullscreen)
 {
 	if (fullscreen && !c->isfullscreen) {
+		/* un-fullscreen any other fullscreen/fakefullscreen client on this monitor */
+		Client *other;
+		for (other = c->mon->clients; other; other = other->next) {
+			if (other == c || !ISVISIBLE(other))
+				continue;
+			if (other->isfullscreen) {
+				setfullscreen(other, 0);
+				other->mon->showbar = 1;
+				other->mon->pertag->showbars[other->mon->pertag->curtag] = 1;
+				updatebarpos(other->mon);
+				XMoveResizeWindow(dpy, other->mon->barwin, other->mon->wx, other->mon->by, other->mon->ww, other->mon->bh);
+			} else if (other->isfakefullscreen)
+				setfakefullscreen(other, 0);
+		}
 		XChangeProperty(dpy, c->win, netatom[NetWMState], XA_ATOM, 32,
 			PropModeReplace, (unsigned char*)&netatom[NetWMFullscreen], 1);
 		c->isfullscreen = 1;
@@ -2183,30 +2195,6 @@ unfocus(Client *c, int setfocus)
 	if (setfocus) {
 		XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
 		XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
-	}
-}
-
-void
-unfullscreens(Monitor *m)
-{
-	Client *c, *fs = NULL;
-	int n = 0;
-	for (c = m->clients; c; c = c->next)
-		if (ISVISIBLE(c)) {
-			n++;
-			if (c->isfullscreen || c->isfakefullscreen)
-				fs = c;
-		}
-	if (n <= 1 || !fs)
-		return;
-	if (fs->isfakefullscreen)
-		setfakefullscreen(fs, 0);
-	else if (fs->isfullscreen) {
-		setfullscreen(fs, 0);
-		fs->mon->showbar = 1;
-		fs->mon->pertag->showbars[fs->mon->pertag->curtag] = 1;
-		updatebarpos(fs->mon);
-		XMoveResizeWindow(dpy, fs->mon->barwin, fs->mon->wx, fs->mon->by, fs->mon->ww, fs->mon->bh);
 	}
 }
 
