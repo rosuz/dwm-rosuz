@@ -112,7 +112,7 @@ fi
 echo ""
 read -rp "Configure keyboard and touchpad now? [Y/n] " ans
 if [[ ! "$ans" =~ ^[nN] ]]; then
-    "$DWM_PATH/scripts/dwm-input-config"
+    sudo "$DWM_PATH/scripts/dwm-input-config"
 fi
 
 echo ""
