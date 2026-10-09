@@ -13,7 +13,7 @@ while true; do
 
   sr_state="$(cat "$STATE_DIR/screen-recording" 2>/dev/null || echo "inactive")"
   if [[ "$sr_state" == "active" ]]; then
-    out+="%{A1:dwm-cmd-screenrecord start:}%{F#a55555}󰻂%{F-}%{A} "
+    out+="%{A1:dwm-cmd-screenrecord --stop-recording:}%{F#a55555}󰻂%{F-}%{A} "
   fi
 
   idle_state="$(cat "$STATE_DIR/idle" 2>/dev/null || echo "enabled")"

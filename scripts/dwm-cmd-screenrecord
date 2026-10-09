@@ -11,6 +11,7 @@ WEBCAM="false"
 WEBCAM_DEVICE=""
 RESOLUTION=""
 STOP_RECORDING="false"
+FULLSCREEN="false"
 
 for arg in "$@"; do
   case "$arg" in
@@ -20,6 +21,7 @@ for arg in "$@"; do
     --webcam-device=*)       WEBCAM_DEVICE="${arg#*=}" ;;
     --resolution=*)          RESOLUTION="${arg#*=}" ;;
     --stop-recording)        STOP_RECORDING="true" ;;
+    --fullscreen)            FULLSCREEN="true" ;;
   esac
 done
 
@@ -172,10 +174,27 @@ finalize_recording() {
 
 start_screenrecording() {
   local target
-  target=$(select_capture_target) || {
-    cleanup_webcam
-    return
-  }
+  if [[ "$FULLSCREEN" == "true" ]]; then
+    target=$(xrandr --current | awk '
+      / connected/ {
+        for (i = 1; i <= NF; i++) {
+          if ($i ~ /^[0-9]+x[0-9]+[+-]/) {
+            split($i, a, "+")
+            print "monitor:"a[1]"+"a[2]"+"a[3]
+            exit
+          }
+        }
+      }')
+    [[ -z "$target" ]] && {
+      cleanup_webcam
+      return
+    }
+  else
+    target=$(select_capture_target) || {
+      cleanup_webcam
+      return
+    }
+  fi
 
   local size="${target#*:}"
   size="${size%%+*}"
