@@ -11,10 +11,24 @@ WINDOW_PATTERN="$1"
 LAUNCH_COMMAND="${2:-"$WINDOW_PATTERN"}"
 shift
 
-# Try to find and focus existing window by class or name (X11)
-if command -v wmctrl &>/dev/null; then
-  wmctrl -xa "$WINDOW_PATTERN" 2>/dev/null && exit 0
-  wmctrl -a "$WINDOW_PATTERN" 2>/dev/null && exit 0
+# Find an existing window by class or title and ask dwm to focus it.
+# Normal activation requests (_NET_ACTIVE_WINDOW) are ignored by dwm (vanilla
+# urgency-only behaviour), so use the private _DWM_FOCUS_WINDOW channel instead.
+if command -v wmctrl &>/dev/null && command -v xprop &>/dev/null; then
+  winid=$(wmctrl -lx 2>/dev/null | awk -v pat="$WINDOW_PATTERN" '
+    BEGIN { p = tolower(pat) }
+    {
+      cls = tolower($3)
+      line = tolower($0)
+      if (!byclass && index(cls, p)) byclass = $1
+      if (!byname && index(line, p)) byname = $1
+    }
+    END { if (byclass) print byclass; else if (byname) print byname }')
+  if [[ -n "$winid" ]]; then
+    xprop -root -f _DWM_FOCUS_WINDOW 32c \
+      -set _DWM_FOCUS_WINDOW "$winid" >/dev/null 2>&1
+    exit 0
+  fi
 fi
 
 # Fallback: launch new instance

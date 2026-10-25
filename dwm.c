@@ -69,7 +69,7 @@ enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
 enum { SchemeNorm, SchemeSel }; /* color schemes */
 enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
        NetWMFullscreen, NetActiveWindow, NetWMWindowType,
-       NetWMWindowTypeDialog, NetLayout, NetOccupied, NetClientList, NetDesktopNames, NetDesktopViewport, NetNumberOfDesktops, NetCurrentDesktop, NetLast }; /* EWMH atoms */
+       NetWMWindowTypeDialog, NetLayout, NetOccupied, NetFocusWindow, NetClientList, NetDesktopNames, NetDesktopViewport, NetNumberOfDesktops, NetCurrentDesktop, NetLast }; /* EWMH atoms */
 enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
 enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
        ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
@@ -1430,6 +1430,30 @@ propertynotify(XEvent *e)
 
 	if ((ev->window == root) && (ev->atom == XA_WM_NAME))
 		updatestatus();
+	else if (ev->window == root && ev->atom == netatom[NetFocusWindow]) {
+		if (ev->state != PropertyDelete) {
+			Atom da;
+			int di;
+			unsigned long n, dl;
+			unsigned char *p = NULL;
+			long win = 0;
+
+			if (XGetWindowProperty(dpy, root, netatom[NetFocusWindow], 0, 1, False,
+					XA_CARDINAL, &da, &di, &n, &dl, &p) == Success && p) {
+				if (n > 0 && di == 32)
+					win = *(long *)p;
+				XFree(p);
+			}
+			XDeleteProperty(dpy, root, netatom[NetFocusWindow]);
+			if ((c = wintoclient((Window)win))) {
+				if (!ISVISIBLE(c))
+					view(&(Arg){ .ui = c->tags & TAGMASK });
+				focus(c);
+				restack(selmon);
+			}
+		}
+		return;
+	}
 	else if (ev->state == PropertyDelete)
 		return; /* ignore */
 	else if ((c = wintoclient(ev->window))) {
@@ -1947,6 +1971,7 @@ setup(void)
 	netatom[NetDesktopNames] = XInternAtom(dpy, "_NET_DESKTOP_NAMES", False);
 	netatom[NetLayout] = XInternAtom(dpy, "_DWM_LAYOUT", False);
 	netatom[NetOccupied] = XInternAtom(dpy, "_DWM_OCCUPIED_TAGS", False);
+	netatom[NetFocusWindow] = XInternAtom(dpy, "_DWM_FOCUS_WINDOW", False);
 	/* init cursors */
 	cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
 	cursor[CurResize] = drw_cur_create(drw, XC_sizing);
