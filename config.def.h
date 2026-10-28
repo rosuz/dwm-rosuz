@@ -28,17 +28,29 @@ static const Rule rules[] = {
 	/* xprop(1):
 	 *	WM_CLASS(STRING) = instance, class
 	 *	WM_NAME(STRING) = title
+	 *
+	 * Geometry/position (MangoWM-style, only for floating windows):
+	 *	rulew/ruleh  = 0 unset · <1 fraction of monitor · >=1 pixels
+	 *	offsetx/offsety = % offset from center (0 = centered, 100 = edge,
+	 *	                  negative = left/up); 100 gives edge-aligned PiP
+	 *	no_force_center = 1 keeps window's own position instead of centering
+	 *	isoverlay       = 1 keep window raised above tiled windows
+	 *	isopensilent    = 1 open without stealing focus
+	 *	isnosizehint    = 1 ignore client min/max/aspect size hints
+	 *	isglobal        = 1 sticky on all tags (never shown in occupied tags)
 	 */
-	/* class                  instance  title                      tags mask  isfloating  isterminal  noswallow  monitor */
-	{ "Gimp",                 NULL,     NULL,                      0,         1,          0,           0,        -1 },
-	{ "steam",                NULL,     NULL,                      1 << 8,    1,          0,          -1,        -1 },
-	{ "Localse",              NULL,     NULL,                      0,         1,          0,          -1,        -1 },
-	{ "org.dwm.",             NULL,     NULL,                      0,         1,          1,           0,        -1 },
-	{ "org.dwm.browser",      NULL,     NULL,                      1 << 1,    0,          0,          -1,        -1 },
-	{ "org.dwm.terminal",     NULL,     NULL,                      0,         0,          1,           0,        -1 },
-	{ "dwm-system-update",    NULL,     NULL,                      0,         1,          0,           0,        -1 },
-	{ NULL,                   NULL,     "Picture",                ~0,         1,          0,           0,        -1 },
-	{ NULL,                   NULL,     "Event Tester",            0,         0,          0,           1,        -1 }, /* xev */
+	/* class                  instance  title                      tags mask  isfloating  isterminal  noswallow  monitor  rulew   ruleh   offx  offy  nfc  ovly  silent  noszh  globl */
+	{ "Gimp",                 NULL,     NULL,                      0,         1,          0,           0,        -1,       0,     0,     0,    0,    0,   0,    0,      0,     0 },
+	{ "steam",                NULL,     NULL,                      1 << 8,    1,          0,          -1,        -1,       0,     0,     0,    0,    0,   0,    0,      0,     0 },
+	{ "Localse",              NULL,     NULL,                      0,         1,          0,          -1,        -1,       0,     0,     0,    0,    0,   0,    0,      0,     0 },
+	{ "org.dwm.",             NULL,     NULL,                      0,         1,          1,           0,        -1,       0.6f,  0.7f,  0,    0,    0,   0,    0,      0,     0 },
+	{ "org.dwm.browser",      NULL,     NULL,                      1 << 1,    0,          0,          -1,        -1,       0,     0,     0,    0,    0,   0,    0,      0,     0 },
+	{ "org.dwm.terminal",     NULL,     NULL,                      0,         0,          1,           0,        -1,       0,     0,     0,    0,    0,   0,    0,      0,     0 },
+	{ "dwm-system-update",    NULL,     NULL,                      0,         1,          0,           0,        -1,       0.6f,  0.7f,  0,    0,    0,   0,    0,      0,     0 },
+	/* picture-in-picture: 35% of monitor (16:9), top-right, kept above,
+	 * opened without focus, ignores size hints, sticky on all tags */
+	{ NULL,                   NULL,     "Picture",                ~0,         1,          0,           0,        -1,       0.35f, 0.35f, 96,   -90,  0,   1,    1,      1,     1 },
+	{ NULL,                   NULL,     "Event Tester",            0,         0,          0,           1,        -1,       0,     0,     0,    0,    0,   0,    0,      0,     0 }, /* xev */
 };
 
 /* layout(s) */
@@ -72,57 +84,57 @@ static const Layout layouts[] = {
 /* commands */
 static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
 static const char *dmenucmd[]     = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_normbg, "-nf", col_normfg, "-sb", col_selbg, "-sf", col_selfg, NULL };
-static const char *screenshot[]   = {"dwm-launch-menu", "screenshot", NULL};
-static const char *screenrecord[]   = {"dwm-launch-menu", "screenrecord", NULL};
+static const char *screenshot[]   = { "dwm-launch-menu", "screenshot", NULL};
+static const char *screenrecord[] = { "dwm-launch-menu", "screenrecord", NULL};
 static const char *rofi_druncmd[] = { "dwm-launch-menu", "drun", NULL };
 
 #include "movestack.c"
 static const Key keys[] = {
-	/* modifier                     key        function        argument */
-	{ MODKEY,                       XK_q,      killclient,     {0} },
-	{ MODKEY|ShiftMask,             XK_Return, spawn,          SHCMD("dwm-launch-terminal") },
-	{ MODKEY,                       XK_Return, spawn,          SHCMD("dwm-launch-terminal-cwd") },
-	{ MODKEY|ShiftMask,             XK_b,      spawn,          SHCMD("dwm-launch-browser") },
-	{ MODKEY,                       XK_space,  spawn,          {.v = rofi_druncmd } },
-	{ MODKEY|Mod1Mask,              XK_space,  spawn,          SHCMD("dwm-launch-menu") },
+	/* modifier                     key             function                       argument */
+	{ MODKEY,                       XK_q,           killclient,                    {0} },
+	{ MODKEY|ShiftMask,             XK_Return,      spawn,                         SHCMD("dwm-launch-terminal") },
+	{ MODKEY,                       XK_Return,      spawn,                         SHCMD("dwm-launch-terminal-cwd") },
+	{ MODKEY|ShiftMask,             XK_b,           spawn,                         SHCMD("dwm-launch-browser") },
+	{ MODKEY,                       XK_space,       spawn,                         {.v = rofi_druncmd } },
+	{ MODKEY|Mod1Mask,              XK_space,       spawn,                         SHCMD("dwm-launch-menu") },
   { MODKEY|Mod1Mask,              XK_m,           spawn,                         SHCMD("dwm-launch-music") },
-	{ MODKEY,                       XK_b,      togglebar,      {0} },
-	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
-	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
-	{ MODKEY,                       XK_i,      incnmaster,     {.i = +1 } },
-	{ MODKEY,                       XK_d,      incnmaster,     {.i = -1 } },
-	{ MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
-	{ MODKEY,                       XK_l,      setmfact,       {.f = +0.05} },
-	{ MODKEY|ShiftMask,             XK_h,      setcfact,       {.f = +0.25} },
-	{ MODKEY|ShiftMask,             XK_l,      setcfact,       {.f = -0.25} },
-	{ MODKEY|ShiftMask,             XK_o,      setcfact,       {.f =  0.00} },
-	{ MODKEY|ShiftMask,             XK_j,      movestack,      {.i = +1 } },
-	{ MODKEY|ShiftMask,             XK_k,      movestack,      {.i = -1 } },
-	{ MODKEY,                       XK_z,      zoom,           {0} },
-	{ MODKEY,                       XK_Tab,    view,           {0} },
-	{ MODKEY|ShiftMask,             XK_c,      setlayout,      {0} },
-	{ MODKEY,                       XK_t,      togglefloating, {0} },
-	{ MODKEY,                       XK_f,      fullscreen,     {0} },
-	{ MODKEY|ShiftMask,             XK_f,      fakefullscreen, {0} },
-	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
-	{ MODKEY|ShiftMask,             XK_0,      tag,            {.ui = ~0 } },
-	{ MODKEY,                       XK_comma,  focusmon,       {.i = -1 } },
-	{ MODKEY,                       XK_period, focusmon,       {.i = +1 } },
-	{ MODKEY|ShiftMask,             XK_comma,  tagmon,         {.i = -1 } },
-	{ MODKEY|ShiftMask,             XK_period, tagmon,         {.i = +1 } },
-	TAGKEYS(                        XK_1,                      0)
-	TAGKEYS(                        XK_2,                      1)
-	TAGKEYS(                        XK_3,                      2)
-	TAGKEYS(                        XK_4,                      3)
-	TAGKEYS(                        XK_5,                      4)
-	TAGKEYS(                        XK_6,                      5)
-	TAGKEYS(                        XK_7,                      6)
-	TAGKEYS(                        XK_8,                      7)
-	TAGKEYS(                        XK_9,                      8)
-	{ 0,                            XK_Print,  spawn,          {.v = screenshot } },
-	{ ShiftMask,                    XK_Print,  spawn,          {.v = screenrecord } },
-	{ MODKEY|ControlMask,           XK_l,      spawn,          SHCMD("dwm-lock-screen") },
-	{ MODKEY|ShiftMask,             XK_q,      quit,           {0} },
+	{ MODKEY,                       XK_b,           togglebar,                     {0} },
+	{ MODKEY,                       XK_j,           focusstack,                    {.i = +1 } },
+	{ MODKEY,                       XK_k,           focusstack,                    {.i = -1 } },
+	{ MODKEY,                       XK_i,           incnmaster,                    {.i = +1 } },
+	{ MODKEY,                       XK_d,           incnmaster,                    {.i = -1 } },
+	{ MODKEY,                       XK_h,           setmfact,                      {.f = -0.05} },
+	{ MODKEY,                       XK_l,           setmfact,                      {.f = +0.05} },
+	{ MODKEY|ShiftMask,             XK_h,           setcfact,                      {.f = +0.25} },
+	{ MODKEY|ShiftMask,             XK_l,           setcfact,                      {.f = -0.25} },
+	{ MODKEY|ShiftMask,             XK_o,           setcfact,                      {.f =  0.00} },
+	{ MODKEY|ShiftMask,             XK_j,           movestack,                     {.i = +1 } },
+	{ MODKEY|ShiftMask,             XK_k,           movestack,                     {.i = -1 } },
+	{ MODKEY,                       XK_z,           zoom,                          {0} },
+	{ MODKEY,                       XK_Tab,         view,                          {0} },
+	{ MODKEY|ShiftMask,             XK_c,           setlayout,                     {0} },
+	{ MODKEY,                       XK_t,           togglefloating,                {0} },
+	{ MODKEY,                       XK_f,           fullscreen,                    {0} },
+	{ MODKEY|ShiftMask,             XK_f,           fakefullscreen,                {0} },
+	{ MODKEY,                       XK_0,           view,                          {.ui = ~0 } },
+	{ MODKEY|ShiftMask,             XK_0,           tag,                           {.ui = ~0 } },
+	{ MODKEY,                       XK_comma,       focusmon,                      {.i = -1 } },
+	{ MODKEY,                       XK_period,      focusmon,                      {.i = +1 } },
+	{ MODKEY|ShiftMask,             XK_comma,       tagmon,                        {.i = -1 } },
+	{ MODKEY|ShiftMask,             XK_period,      tagmon,                        {.i = +1 } },
+	TAGKEYS(                        XK_1,                                          0)
+	TAGKEYS(                        XK_2,                                          1)
+	TAGKEYS(                        XK_3,                                          2)
+	TAGKEYS(                        XK_4,                                          3)
+	TAGKEYS(                        XK_5,                                          4)
+	TAGKEYS(                        XK_6,                                          5)
+	TAGKEYS(                        XK_7,                                          6)
+	TAGKEYS(                        XK_8,                                          7)
+	TAGKEYS(                        XK_9,                                          8)
+	{ 0,                            XK_Print,       spawn,                         {.v = screenshot } },
+	{ ShiftMask,                    XK_Print,       spawn,                         {.v = screenrecord } },
+	{ MODKEY|ControlMask,           XK_l,           spawn,                         SHCMD("dwm-lock-screen") },
+	{ MODKEY|ShiftMask,             XK_q,           quit,                          {0} },
 
   /* Fn keys - universal XF86 keysyms */
 	/* Volume controls */

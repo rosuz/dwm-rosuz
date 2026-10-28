@@ -98,9 +98,18 @@ struct Client {
 	int x, y, w, h;
 	int oldx, oldy, oldw, oldh;
 	int basew, baseh, incw, inch, maxw, maxh, minw, minh, hintsvalid;
-	int bw, oldbw;
+	int bw, oldbw, oldshowbar;
 	unsigned int tags;
   int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen, isfakefullscreen, isterminal, noswallow;
+	/* MangoWM-style rule geometry/behavior (set by applyrules) */
+	float rulew, ruleh;    /* 0 = unset; <1 = fraction of monitor; >=1 = px */
+	int   offsetx, offsety; /* % offset from center; 100 = edge; 0 = centered */
+	int   no_force_center;
+	int   isoverlay;
+	int   isopensilent;
+	int   isnosizehint;
+	int   isglobal;
+	int   centerlock; /* centered at open time (natural size); hold position against app requests */
 	pid_t pid;
 	Client *next;
 	Client *snext;
@@ -153,10 +162,19 @@ typedef struct {
 	int isterminal;
 	int noswallow;
 	int monitor;
+	/* MangoWM-style rule geometry/behavior */
+	float rulew, ruleh;    /* 0 = unset; <1 = fraction of monitor; >=1 = px */
+	int   offsetx, offsety; /* % offset from center; 100 = edge; 0 = centered */
+	int   no_force_center;
+	int   isoverlay;
+	int   isopensilent;
+	int   isnosizehint;
+	int   isglobal;
 } Rule;
 
 /* function declarations */
 static void applyrules(Client *c);
+void setclientgeometry(Client *c);
 static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact);
 static void arrange(Monitor *m);
 static void arrangemon(Monitor *m);
@@ -350,7 +368,18 @@ applyrules(Client *c)
 			c->isterminal = r->isterminal;
 			c->noswallow  = r->noswallow;
 			c->isfloating = r->isfloating;
+			c->rulew = r->rulew;
+			c->ruleh = r->ruleh;
+			c->offsetx = r->offsetx;
+			c->offsety = r->offsety;
+			c->no_force_center = r->no_force_center;
+			c->isoverlay = r->isoverlay;
+			c->isopensilent = r->isopensilent;
+			c->isnosizehint = r->isnosizehint;
+			c->isglobal = r->isglobal;
 			c->tags |= r->tags;
+			if (r->isglobal)
+				c->tags = ~0; /* sticky across all tags */
 			for (m = mons; m && m->num != r->monitor; m = m->next);
 			if (m)
 				c->mon = m;
@@ -363,11 +392,56 @@ applyrules(Client *c)
 	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
 }
 
+/* MangoWM-style floating geometry: size from rulew/ruleh (0=unset, <1=fraction,
+ * >=1=px), position centered on the monitor then shifted by offsetx/offsety
+ * (% of half-free-space; 100 = edge), clamped on-screen. */
+void
+setclientgeometry(Client *c)
+{
+	int x, y, w, h, len;
+	Monitor *m = c->mon;
+
+	w = c->w;
+	h = c->h;
+	if (c->rulew > 1)
+		w = (int)c->rulew;
+	else if (c->rulew > 0)
+		w = (int)(m->ww * c->rulew);
+	if (c->ruleh > 1)
+		h = (int)c->ruleh;
+	else if (c->ruleh > 0)
+		h = (int)(m->wh * c->ruleh);
+
+	if (!c->no_force_center) {
+		x = m->wx + (m->ww - w) / 2;
+		y = m->wy + (m->wh - h) / 2;
+	} else {
+		x = c->x;
+		y = c->y;
+	}
+
+	if (c->offsetx) {
+		len = (m->ww - w) / 2;
+		x += len * c->offsetx / 100;
+	}
+	if (c->offsety) {
+		len = (m->wh - h) / 2;
+		y += len * c->offsety / 100;
+	}
+	x = MAX(m->wx, MIN(x, m->wx + m->ww - w));
+	y = MAX(m->wy, MIN(y, m->wy + m->wh - h));
+
+	resizeclient(c, x, y, w, h);
+}
+
 int
 applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
 {
 	int baseismin;
 	Monitor *m = c->mon;
+
+	if (c->isnosizehint)
+		return *x != c->x || *y != c->y || *w != c->w || *h != c->h;
 
 	/* set minimum possible */
 	*w = MAX(1, *w);
@@ -716,6 +790,10 @@ configurerequest(XEvent *e)
 				c->x = m->mx + (m->mw / 2 - WIDTH(c) / 2); /* center in x direction */
 			if ((c->y + c->h) > m->my + m->mh && c->isfloating)
 				c->y = m->my + (m->mh / 2 - HEIGHT(c) / 2); /* center in y direction */
+			if (c->centerlock && (ev->value_mask & (CWX|CWY))) {
+				c->x = m->wx + (m->ww - c->w) / 2; /* hold centered against app moves */
+				c->y = m->wy + (m->wh - c->h) / 2;
+			}
 			if ((ev->value_mask & (CWX|CWY)) && !(ev->value_mask & (CWWidth|CWHeight)))
 				configure(c);
 			if (ISVISIBLE(c))
@@ -850,7 +928,7 @@ drawbar(Monitor *m)
 	}
 
 	for (c = m->clients; c; c = c->next) {
-		if (strstr(c->name, "Picture")) continue;  // Skip PiP
+		if (c->isglobal) continue;  // skip sticky PiP-style clients in occupancy
 		occ |= c->tags;
 		if (c->isurgent)
 			urg |= c->tags;
@@ -1008,13 +1086,6 @@ fullscreen(const Arg *arg)
 		if (c->isfakefullscreen)
 			setfakefullscreen(c, 0);
 		setfullscreen(c, !c->isfullscreen);
-		if (c->isfullscreen) {
-			if (selmon->showbar)
-				togglebar(NULL);
-		} else {
-			if (!selmon->showbar)
-				togglebar(NULL);
-		}
 	}
 }
 
@@ -1023,11 +1094,8 @@ fakefullscreen(const Arg *arg)
 {
 	Client *c = selmon->sel;
 	if (c) {
-		if (c->isfullscreen) {
+		if (c->isfullscreen)
 			setfullscreen(c, 0);
-			if (!selmon->showbar)
-				togglebar(NULL);
-		}
 		setfakefullscreen(c, !c->isfakefullscreen);
 	}
 }
@@ -1206,6 +1274,7 @@ manage(Window w, XWindowAttributes *wa)
 	Client *c, *t = NULL, *term = NULL;
 	Window trans = None;
 	XWindowChanges wc;
+	Client *prevsel = selmon->sel;
 
 	c = ecalloc(1, sizeof(Client));
 	c->win = w;
@@ -1248,10 +1317,16 @@ manage(Window w, XWindowAttributes *wa)
 	if (!c->isfloating)
 		c->isfloating = c->oldstate = trans != None || c->isfixed;
 	if (c->isfloating || !c->mon->lt[c->mon->sellt]->arrange) {
-		c->w = c->mon->ww * 6 / 10;
-		c->h = c->mon->wh * 7 / 10;
-		c->x = c->mon->wx + (c->mon->ww - c->w) / 2;
-		c->y = c->mon->wy + (c->mon->wh - c->h) / 2;
+		if (c->isfloating) {
+			setclientgeometry(c);
+			if (!(c->rulew || c->ruleh || c->offsetx || c->offsety || c->no_force_center))
+				c->centerlock = 1;
+		} else {
+			c->w = c->mon->ww * 6 / 10;
+			c->h = c->mon->wh * 7 / 10;
+			c->x = c->mon->wx + (c->mon->ww - c->w) / 2;
+			c->y = c->mon->wy + (c->mon->wh - c->h) / 2;
+		}
 		XRaiseWindow(dpy, c->win);
 	}
 	attach(c);
@@ -1260,14 +1335,18 @@ manage(Window w, XWindowAttributes *wa)
 		(unsigned char *) &(c->win), 1);
 	XMoveResizeWindow(dpy, c->win, c->isfloating ? c->x : c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
 	setclientstate(c, NormalState);
-	if (c->mon == selmon)
+	if (c->mon == selmon && !c->isopensilent)
 		unfocus(selmon->sel, 0);
-	c->mon->sel = c;
+	if (!c->isopensilent)
+		c->mon->sel = c;
 	arrange(c->mon);
 	XMapWindow(dpy, c->win);
 	if (term)
 		swallow(term, c);
-	focus(NULL);
+	if (c->isopensilent)
+		focus(prevsel); /* open without stealing focus */
+	else
+		focus(NULL);
 }
 
 void
@@ -1602,6 +1681,10 @@ restack(Monitor *m)
 				wc.sibling = c->win;
 			}
 	}
+	/* keep overlay clients (e.g. picture-in-picture) above everything */
+	for (c = m->stack; c; c = c->snext)
+		if (c->isoverlay && ISVISIBLE(c))
+			XRaiseWindow(dpy, c->win);
 	XSync(dpy, False);
 	while (XCheckMaskEvent(dpy, EnterWindowMask, &ev));
 }
@@ -1808,10 +1891,6 @@ setfullscreen(Client *c, int fullscreen)
 				continue;
 			if (other->isfullscreen) {
 				setfullscreen(other, 0);
-				other->mon->showbar = 1;
-				other->mon->pertag->showbars[other->mon->pertag->curtag] = 1;
-				updatebarpos(other->mon);
-				XMoveResizeWindow(dpy, other->mon->barwin, other->mon->wx, other->mon->by, other->mon->ww, other->mon->bh);
 			} else if (other->isfakefullscreen)
 				setfakefullscreen(other, 0);
 		}
@@ -1822,6 +1901,13 @@ setfullscreen(Client *c, int fullscreen)
 		c->oldbw = c->bw;
 		c->bw = 0;
 		c->isfloating = 1;
+		c->oldshowbar = c->mon->showbar;
+		if (c->mon->showbar && c->mon->barwin) {
+			c->mon->showbar = 0;
+			c->mon->pertag->showbars[c->mon->pertag->curtag] = 0;
+			updatebarpos(c->mon);
+			XMoveResizeWindow(dpy, c->mon->barwin, c->mon->wx, c->mon->by, c->mon->ww, c->mon->bh);
+		}
 		resizeclient(c, c->mon->mx, c->mon->my, c->mon->mw, c->mon->mh);
 		XRaiseWindow(dpy, c->win);
 	} else if (!fullscreen && c->isfullscreen){
@@ -1830,6 +1916,12 @@ setfullscreen(Client *c, int fullscreen)
 		c->isfullscreen = 0;
 		c->isfloating = c->oldstate;
 		c->bw = c->oldbw;
+		if (c->oldshowbar && c->mon->barwin && !c->mon->showbar) {
+			c->mon->showbar = 1;
+			c->mon->pertag->showbars[c->mon->pertag->curtag] = 1;
+			updatebarpos(c->mon);
+			XMoveResizeWindow(dpy, c->mon->barwin, c->mon->wx, c->mon->by, c->mon->ww, c->mon->bh);
+		}
 		c->x = c->oldx;
 		c->y = c->oldy;
 		c->w = c->oldw;
@@ -2229,6 +2321,7 @@ unmanage(Client *c, int destroyed)
 	Monitor *m = c->mon;
 	XWindowChanges wc;
 
+
 	if (c->swallowing) {
 		unswallow(c);
 		return;
@@ -2374,7 +2467,7 @@ updateoccupiedtags(void) {
 	unsigned int occ = 0;
 	Client *c;
 	for (c = selmon->clients; c; c = c->next) {
-		if (strstr(c->name, "Picture")) continue;  // Skip PiP
+		if (c->isglobal) continue;  // skip sticky PiP-style clients in occupancy
 		occ |= c->tags;
 	}
 	long data[] = { (long)(occ & TAGMASK) };
