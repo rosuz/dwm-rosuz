@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+case "${1:-}" in
+    +5%|5%+)      brightnessctl set 5%+ ;;
+    5%-|-5%)      brightnessctl set 5%- ;;
+    100%)         brightnessctl set 100% ;;
+    1%)           brightnessctl set 1% ;;
+    +1%|1%+)      brightnessctl set 1%+ ;;
+    1%-|-1%)      brightnessctl set 1%- ;;
+    *)            echo "Usage: $0 {+5%|5%-|100%|1%|+1%|1%-}" >&2; exit 1 ;;
+esac

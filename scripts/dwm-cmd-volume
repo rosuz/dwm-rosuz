@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+case "${1:-}" in
+    raise)        pamixer --unmute --increase 5 ;;
+    lower)        pamixer --decrease 5 ;;
+    mute-toggle)  pamixer --toggle-mute ;;
+    +1)           pamixer --unmute --increase 1 ;;
+    -1)           pamixer --decrease 1 ;;
+    *)            echo "Usage: $0 {raise|lower|mute-toggle|+1|-1}" >&2; exit 1 ;;
+esac

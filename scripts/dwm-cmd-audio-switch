@@ -1,0 +1,23 @@
+#!/bin/bash
+set -euo pipefail
+sinks=$(pactl list short sinks | awk '{print $2}')
+if [[ -z "$sinks" ]]; then
+    notify-send "Audio" "No audio sinks found" 2>/dev/null || true
+    exit 0
+fi
+current_sink=$(pactl get-default-sink)
+next=false
+while IFS= read -r sink; do
+    if [[ "$sink" == "$current_sink" ]]; then
+        next=true
+        continue
+    fi
+    if $next; then
+        pactl set-default-sink "$sink"
+        notify-send "Audio" "Switched to $sink" 2>/dev/null || true
+        exit 0
+    fi
+done <<< "$sinks"
+first_sink=$(echo "$sinks" | head -1)
+pactl set-default-sink "$first_sink"
+notify-send "Audio" "Switched to $first_sink" 2>/dev/null || true

@@ -54,6 +54,8 @@ PACMAN_PKGS=(
   feh polybar dunst maim xclip ffmpeg
   imagemagick xdotool upower rofi slop i3lock wmctrl
   pamixer brightnessctl
+  mpd rmpc playerctl gnome-calculator lazydocker
+  # eject and rfkill are provided by util-linux (base)
   bluez-utils rfkill fzf inotify-tools v4l-utils
   pacman-contrib libnotify xdg-utils
   alacritty btop neovim wiremix bluetui impala less starship zoxide fastfetch bat bash-completion

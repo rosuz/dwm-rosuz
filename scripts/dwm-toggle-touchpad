@@ -1,0 +1,22 @@
+#!/bin/bash
+set -euo pipefail
+toggle_all() {
+    local action="$1"
+    xinput list --name-only | grep -i touchpad | while read -r dev; do
+        case "$action" in
+            on)      xinput enable "$dev" ;;
+            off)     xinput disable "$dev" ;;
+            toggle)
+                if xinput list-props "$dev" | grep -q "Device Enabled.*1"; then
+                    xinput disable "$dev"
+                else
+                    xinput enable "$dev"
+                fi
+                ;;
+        esac
+    done
+}
+case "${1:-toggle}" in
+    on|off|toggle) toggle_all "$1" ;;
+    *) echo "Usage: $0 {on|off|toggle}" >&2; exit 1 ;;
+esac

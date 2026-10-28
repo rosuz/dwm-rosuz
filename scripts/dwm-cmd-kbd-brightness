@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+KBD_DEV=$(brightnessctl --list 2>/dev/null | grep -i 'kbd\|keyboard' | head -1 | sed "s/Device '\([^']*\)'.*/\1/")
+if [[ -z "$KBD_DEV" ]]; then
+    notify-send "Keyboard" "No keyboard backlight found" 2>/dev/null || true
+    exit 0
+fi
+case "${1:-}" in
+    up)     brightnessctl -d "$KBD_DEV" set +1 ;;
+    down)   brightnessctl -d "$KBD_DEV" set -1 ;;
+    cycle)
+        current=$(brightnessctl -d "$KBD_DEV" get)
+        max=$(brightnessctl -d "$KBD_DEV" max)
+        if [[ "$current" -eq 0 ]]; then
+            brightnessctl -d "$KBD_DEV" set "$max"
+        else
+            brightnessctl -d "$KBD_DEV" set 0
+        fi
+        ;;
+    *)      echo "Usage: $0 {up|down|cycle}" >&2; exit 1 ;;
+esac

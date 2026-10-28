@@ -1,0 +1,23 @@
+#!/bin/bash
+set -euo pipefail
+players=$(playerctl -l 2>/dev/null || true)
+if [[ -z "$players" ]]; then
+    notify-send "Media" "No players found" 2>/dev/null || true
+    exit 0
+fi
+current_player=$(playerctl status 2>/dev/null | head -1 || echo "")
+next=false
+while IFS= read -r player; do
+    if [[ "$player" == "$current_player" ]]; then
+        next=true
+        continue
+    fi
+    if $next; then
+        playerctl -p "$player" play 2>/dev/null || true
+        notify-send "Media" "Switched to $player" 2>/dev/null || true
+        exit 0
+    fi
+done <<< "$players"
+first_player=$(echo "$players" | head -1)
+playerctl -p "$first_player" play 2>/dev/null || true
+notify-send "Media" "Switched to $first_player" 2>/dev/null || true

@@ -32,6 +32,11 @@ if command -v greenclip >/dev/null 2>&1; then
   greenclip daemon &
 fi
 
+# Start mpd music daemon
+if command -v mpd >/dev/null 2>&1; then
+  mpd &
+fi
+
 # Start idle daemon
 if command -v xautolock >/dev/null 2>&1; then
   "$DWM_PATH/scripts/dwm-toggle-idle" --enable --quiet

@@ -2,6 +2,7 @@
 
 /* Include generated theme colors — built by dwm-generate-theme from colors.toml */
 #include "themes/current/colors.h"
+#include <X11/XF86keysym.h>
 
 /* appearance */
 static const unsigned int borderpx  = 3;        /* border pixel of windows */
@@ -84,6 +85,7 @@ static const Key keys[] = {
 	{ MODKEY|ShiftMask,             XK_b,      spawn,          SHCMD("dwm-launch-browser") },
 	{ MODKEY,                       XK_space,  spawn,          {.v = rofi_druncmd } },
 	{ MODKEY|Mod1Mask,              XK_space,  spawn,          SHCMD("dwm-launch-menu") },
+  { MODKEY|Mod1Mask,              XK_m,           spawn,                         SHCMD("dwm-launch-music") },
 	{ MODKEY,                       XK_b,      togglebar,      {0} },
 	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
 	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
@@ -121,6 +123,51 @@ static const Key keys[] = {
 	{ ShiftMask,                    XK_Print,  spawn,          {.v = screenrecord } },
 	{ MODKEY|ControlMask,           XK_l,      spawn,          SHCMD("dwm-lock-screen") },
 	{ MODKEY|ShiftMask,             XK_q,      quit,           {0} },
+
+  /* Fn keys - universal XF86 keysyms */
+	/* Volume controls */
+	{ 0,                            XF86XK_AudioRaiseVolume,          spawn,       SHCMD("dwm-cmd-volume raise") },
+	{ 0,                            XF86XK_AudioLowerVolume,          spawn,       SHCMD("dwm-cmd-volume lower") },
+	{ 0,                            XF86XK_AudioMute,                 spawn,       SHCMD("dwm-cmd-volume mute-toggle") },
+	{ 0,                            XF86XK_AudioMicMute,              spawn,       SHCMD("pamixer --default-source --toggle-mute") },
+	{ Mod1Mask,                     XF86XK_AudioRaiseVolume,          spawn,       SHCMD("dwm-cmd-volume +1") },
+	{ Mod1Mask,                     XF86XK_AudioLowerVolume,          spawn,       SHCMD("dwm-cmd-volume -1") },
+	{ ShiftMask,                    XF86XK_AudioMute,                 spawn,       SHCMD("dwm-cmd-audio-switch") },
+	/* Brightness controls */
+	{ 0,                            XF86XK_MonBrightnessUp,           spawn,       SHCMD("dwm-cmd-brightness +5%") },
+	{ 0,                            XF86XK_MonBrightnessDown,         spawn,       SHCMD("dwm-cmd-brightness 5%-") },
+	{ ShiftMask,                    XF86XK_MonBrightnessUp,           spawn,       SHCMD("dwm-cmd-brightness 100%") },
+	{ ShiftMask,                    XF86XK_MonBrightnessDown,         spawn,       SHCMD("dwm-cmd-brightness 1%") },
+	{ Mod1Mask,                     XF86XK_MonBrightnessUp,           spawn,       SHCMD("dwm-cmd-brightness +1%") },
+	{ Mod1Mask,                     XF86XK_MonBrightnessDown,         spawn,       SHCMD("dwm-cmd-brightness 1%-") },
+	/* Keyboard backlight */
+	{ 0,                            XF86XK_KbdBrightnessUp,           spawn,       SHCMD("dwm-cmd-kbd-brightness up") },
+	{ 0,                            XF86XK_KbdBrightnessDown,         spawn,       SHCMD("dwm-cmd-kbd-brightness down") },
+	{ 0,                            XF86XK_KbdLightOnOff,             spawn,       SHCMD("dwm-cmd-kbd-brightness cycle") },
+	/* Touchpad */
+	{ 0,                            XF86XK_TouchpadToggle,            spawn,       SHCMD("dwm-toggle-touchpad") },
+	{ 0,                            XF86XK_TouchpadOn,                spawn,       SHCMD("dwm-toggle-touchpad on") },
+	{ 0,                            XF86XK_TouchpadOff,               spawn,       SHCMD("dwm-toggle-touchpad off") },
+	/* Media controls */
+	{ 0,                            XF86XK_AudioNext,                 spawn,       SHCMD("playerctl next") },
+	{ 0,                            XF86XK_AudioPrev,                 spawn,       SHCMD("playerctl previous") },
+	{ 0,                            XF86XK_AudioPause,                spawn,       SHCMD("playerctl play-pause") },
+	{ 0,                            XF86XK_AudioPlay,                 spawn,       SHCMD("playerctl play-pause") },
+	{ 0,                            XF86XK_AudioStop,                 spawn,       SHCMD("playerctl stop") },
+	{ 0,                            XF86XK_Eject,                     spawn,       SHCMD("eject") },
+	{ Mod1Mask,                     XF86XK_AudioPlay,                 spawn,       SHCMD("playerctl next") },
+	{ Mod1Mask|ShiftMask,           XF86XK_AudioPlay,                 spawn,       SHCMD("playerctl previous") },
+	{ ShiftMask,                    XF86XK_AudioPause,                spawn,       SHCMD("dwm-cmd-media-source-switch") },
+	{ ShiftMask,                    XF86XK_AudioPlay,                 spawn,       SHCMD("dwm-cmd-media-source-switch") },
+	/* Network */
+	{ 0,                            XF86XK_WLAN,                      spawn,       SHCMD("rfkill toggle wifi") },
+	{ 0,                            XF86XK_Bluetooth,                 spawn,       SHCMD("rfkill toggle bluetooth") },
+	/* Launchers */
+	{ 0,                            XF86XK_Calculator,                spawn,       SHCMD("gnome-calculator") },
+	{ 0,                            XF86XK_HomePage,                  spawn,       SHCMD("dwm-launch-browser") },
+	{ 0,                            XF86XK_WWW,                       spawn,       SHCMD("dwm-launch-browser") },
+	{ 0,                            XF86XK_ScreenSaver,               spawn,       SHCMD("dwm-lock-screen") },
+	{ 0,                            XF86XK_Sleep,                     spawn,       SHCMD("systemctl suspend") },
 };
 
 /* button definitions */
